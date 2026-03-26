@@ -1,0 +1,163 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scenes/game/Game.gd" id="1_game"]
+[ext_resource type="Script" path="res://scenes/ui/HUD.gd" id="2_hud"]
+
+[node name="Game" type="Node2D"]
+script = ExtResource("1_game")
+
+[node name="DungeonTileMap" type="TileMapLayer" parent="."]
+collision_enabled = true
+
+[node name="Players" type="Node2D" parent="."]
+
+[node name="Enemies" type="Node2D" parent="."]
+
+[node name="Items" type="Node2D" parent="."]
+
+[node name="Camera2D" type="Camera2D" parent="."]
+zoom = Vector2(3, 3)
+position_smoothing_enabled = true
+position_smoothing_speed = 6.0
+
+[node name="HUD" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_hud")
+
+[node name="TopLeft" type="VBoxContainer" parent="HUD"]
+offset_right = 120.0
+offset_bottom = 40.0
+
+[node name="HPBar" type="ProgressBar" parent="HUD/TopLeft"]
+custom_minimum_size = Vector2(100, 8)
+max_value = 100.0
+value = 100.0
+
+[node name="HPLabel" type="Label" parent="HUD/TopLeft"]
+text = "100 / 100"
+
+[node name="ManaBar" type="ProgressBar" parent="HUD/TopLeft"]
+custom_minimum_size = Vector2(100, 6)
+max_value = 100.0
+value = 100.0
+modulate = Color(0.2, 0.5, 1, 1)
+
+[node name="ManaLabel" type="Label" parent="HUD/TopLeft"]
+text = "50 / 50"
+
+[node name="TopRight" type="VBoxContainer" parent="HUD"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -130.0
+offset_bottom = 30.0
+grow_horizontal = 0
+
+[node name="FloorLabel" type="Label" parent="HUD/TopRight"]
+text = "Flooded Ruins — Floor 1"
+horizontal_alignment = 2
+
+[node name="TokenLabel" type="Label" parent="HUD/TopRight"]
+text = "Tide Tokens: 0"
+horizontal_alignment = 2
+
+[node name="Bottom" type="HBoxContainer" parent="HUD"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -60.0
+offset_top = -28.0
+offset_right = 60.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="Hotbar" type="HBoxContainer" parent="HUD/Bottom"]
+alignment = 1
+
+[node name="Center" type="Control" parent="HUD"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="MessageBox" type="PanelContainer" parent="HUD/Center"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -120.0
+offset_top = -20.0
+offset_right = 120.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+visible = false
+
+[node name="MessageLabel" type="Label" parent="HUD/Center/MessageBox"]
+text = ""
+horizontal_alignment = 1
+
+[node name="EndingPanel" type="PanelContainer" parent="HUD/Center"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 60.0
+offset_top = 40.0
+offset_right = -60.0
+offset_bottom = -40.0
+grow_horizontal = 2
+grow_vertical = 2
+visible = false
+
+[node name="VBox" type="VBoxContainer" parent="HUD/Center/EndingPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Title" type="Label" parent="HUD/Center/EndingPanel/VBox"]
+text = ""
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 18
+
+[node name="Description" type="Label" parent="HUD/Center/EndingPanel/VBox"]
+text = ""
+autowrap_mode = 3
+horizontal_alignment = 1
+
+[node name="Buttons" type="VBoxContainer" parent="HUD/Center/EndingPanel/VBox"]
+alignment = 1
+
+[node name="GameOverPanel" type="PanelContainer" parent="HUD/Center"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 80.0
+offset_top = 60.0
+offset_right = -80.0
+offset_bottom = -60.0
+grow_horizontal = 2
+grow_vertical = 2
+visible = false
+
+[node name="Label" type="Label" parent="HUD/Center/GameOverPanel"]
+layout_mode = 2
+text = "The deep claims another."
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3

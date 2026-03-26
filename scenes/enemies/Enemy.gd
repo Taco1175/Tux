@@ -67,6 +67,7 @@ signal died(enemy_node: Node, position: Vector2)
 
 
 func _ready() -> void:
+	_configure_stats()
 	current_hp = max_hp
 	if multiplayer.is_server():
 		detection_area.body_entered.connect(_on_body_entered_detection)
@@ -159,6 +160,37 @@ func _ai_flee(delta: float) -> void:
 	if target:
 		velocity = (global_position - target.global_position).normalized() * move_speed * 1.2
 		move_and_slide()
+
+
+func _configure_stats() -> void:
+	match enemy_type:
+		EnemyType.CRAB_GRUNT:
+			max_hp = 30; damage = 6; move_speed = 45.0; xp_reward = 8
+		EnemyType.CRAB_KNIGHT:
+			max_hp = 55; damage = 10; move_speed = 38.0; defense = 4; xp_reward = 18
+		EnemyType.LOBSTER_WARLORD:
+			max_hp = 90; damage = 15; move_speed = 35.0; defense = 6; xp_reward = 35
+		EnemyType.EEL_SCOUT:
+			max_hp = 22; damage = 8; move_speed = 75.0; attack_range = 16.0; xp_reward = 10
+		EnemyType.ANGLERFISH:
+			max_hp = 60; damage = 18; move_speed = 30.0; aggro_range = 64.0; xp_reward = 25
+		EnemyType.SHARK_BRUTE:
+			max_hp = 80; damage = 22; move_speed = 60.0; attack_cooldown_max = 1.8; xp_reward = 30
+		EnemyType.JELLYFISH_DRIFTER:
+			max_hp = 18; damage = 5; move_speed = 35.0; xp_reward = 7
+		EnemyType.URCHIN_ROLLER:
+			max_hp = 35; damage = 9; move_speed = 55.0; xp_reward = 12
+		EnemyType.ANEMONE_TRAP:
+			max_hp = 45; damage = 12; move_speed = 0.0; aggro_range = 48.0; xp_reward = 14
+		EnemyType.CRAB_WARLORD:   # Zone 2 boss
+			max_hp = 320; damage = 25; move_speed = 42.0; defense = 8
+			attack_cooldown_max = 0.8; loot_table_weight = 5; xp_reward = 150
+		EnemyType.THE_LEVIATHAN:  # Zone 3 boss
+			max_hp = 600; damage = 35; move_speed = 50.0; defense = 12
+			attack_cooldown_max = 1.0; loot_table_weight = 8; xp_reward = 300
+		EnemyType.THE_DROWNED_GOD: # Final boss
+			max_hp = 1200; damage = 45; move_speed = 40.0; defense = 15
+			attack_cooldown_max = 1.2; loot_table_weight = 10; xp_reward = 999
 
 
 func _pick_patrol_point() -> void:

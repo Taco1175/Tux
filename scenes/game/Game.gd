@@ -3,6 +3,10 @@ extends Node2D
 # Orchestrates: dungeon generation, player spawning, enemy spawning,
 # loot drops, floor transitions, and the four ending paths.
 
+const BSPGenerator  = preload("res://scripts/utils/BSPGenerator.gd")
+const ItemGenerator = preload("res://scenes/items/ItemGenerator.gd")
+const EnemyScript   = preload("res://scenes/enemies/Enemy.gd")
+
 const PlayerScripts := {
 	ItemDatabase.PlayerClass.EMPEROR:    preload("res://scenes/player/classes/Emperor.gd"),
 	ItemDatabase.PlayerClass.GENTOO:     preload("res://scenes/player/classes/Gentoo.gd"),
@@ -145,24 +149,24 @@ func _pick_enemy_type(spawn_data: Dictionary) -> int:
 	match theme:
 		BSPGenerator.ZoneTheme.FLOODED_RUINS:
 			return [
-				Enemy.EnemyType.CRAB_GRUNT,
-				Enemy.EnemyType.CRAB_GRUNT,
-				Enemy.EnemyType.EEL_SCOUT,
+				EnemyScript.EnemyType.CRAB_GRUNT,
+				EnemyScript.EnemyType.CRAB_GRUNT,
+				EnemyScript.EnemyType.EEL_SCOUT,
 			][randi() % 3]
 		BSPGenerator.ZoneTheme.CORAL_CRYPTS:
 			return [
-				Enemy.EnemyType.CRAB_KNIGHT,
-				Enemy.EnemyType.JELLYFISH_DRIFTER,
-				Enemy.EnemyType.URCHIN_ROLLER,
+				EnemyScript.EnemyType.CRAB_KNIGHT,
+				EnemyScript.EnemyType.JELLYFISH_DRIFTER,
+				EnemyScript.EnemyType.URCHIN_ROLLER,
 			][randi() % 3]
 		BSPGenerator.ZoneTheme.ABYSSAL_TRENCH:
 			return [
-				Enemy.EnemyType.SHARK_BRUTE,
-				Enemy.EnemyType.ANGLERFISH,
-				Enemy.EnemyType.ANEMONE_TRAP,
+				EnemyScript.EnemyType.SHARK_BRUTE,
+				EnemyScript.EnemyType.ANGLERFISH,
+				EnemyScript.EnemyType.ANEMONE_TRAP,
 			][randi() % 3]
 		_:
-			return Enemy.EnemyType.CRAB_GRUNT
+			return EnemyScript.EnemyType.CRAB_GRUNT
 
 
 # -------------------------------------------------------

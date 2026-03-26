@@ -1,0 +1,92 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/lobby/Lobby.gd" id="1_lobby"]
+
+[node name="Lobby" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_lobby")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.05, 0.05, 0.1, 1)
+
+[node name="UI" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 16.0
+offset_right = -20.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="TitleLabel" type="Label" parent="UI"]
+text = "TUX — Lobby"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 16
+
+[node name="ConnectionPanel" type="HBoxContainer" parent="UI"]
+alignment = 1
+
+[node name="AddressInput" type="LineEdit" parent="UI/ConnectionPanel"]
+custom_minimum_size = Vector2(100, 0)
+placeholder_text = "IP Address"
+text = "127.0.0.1"
+
+[node name="PortInput" type="LineEdit" parent="UI/ConnectionPanel"]
+custom_minimum_size = Vector2(50, 0)
+placeholder_text = "Port"
+text = "7777"
+
+[node name="HostButton" type="Button" parent="UI/ConnectionPanel"]
+text = "Host"
+
+[node name="JoinButton" type="Button" parent="UI/ConnectionPanel"]
+text = "Join"
+
+[node name="StatusLabel" type="Label" parent="UI"]
+text = "Enter an IP to join, or host a game."
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Separator" type="HSeparator" parent="UI"]
+
+[node name="ClassLabel" type="Label" parent="UI"]
+text = "Choose your sibling:"
+horizontal_alignment = 1
+
+[node name="ClassSelector" type="HBoxContainer" parent="UI"]
+alignment = 1
+
+[node name="Separator2" type="HSeparator" parent="UI"]
+
+[node name="PlayerListLabel" type="Label" parent="UI"]
+text = "Players:"
+
+[node name="PlayerList" type="VBoxContainer" parent="UI"]
+custom_minimum_size = Vector2(0, 40)
+
+[node name="Separator3" type="HSeparator" parent="UI"]
+
+[node name="BottomRow" type="HBoxContainer" parent="UI"]
+alignment = 1
+
+[node name="TokenLabel" type="Label" parent="UI/BottomRow"]
+text = "Tide Tokens: 0"
+
+[node name="ReadyButton" type="Button" parent="UI/BottomRow"]
+text = "Ready"
+disabled = true
+
+[node name="StartButton" type="Button" parent="UI/BottomRow"]
+text = "Start Game"
+visible = false
