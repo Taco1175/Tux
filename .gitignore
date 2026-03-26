@@ -1,0 +1,16 @@
+# Godot 4 .gitignore
+
+# Godot-specific ignores
+.godot/
+*.translation
+
+# Exported projects
+/export/
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Editor metadata (optional — remove if you want to share editor layout)
+/.godot/editor/
+/.godot/imported/
