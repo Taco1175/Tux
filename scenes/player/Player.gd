@@ -1,3 +1,5 @@
+extends CharacterBody2D
+# Base player class — all four siblings inherit from this.
 const SpriteFramesBuilder = preload("res://scenes/player/SpriteFramesBuilder.gd")
 
 

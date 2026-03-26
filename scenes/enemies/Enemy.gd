@@ -1,8 +1,10 @@
-const EnemySpriteBuilder = preload("res://scenes/enemies/EnemySpriteBuilder.gd")
+
 
 extends CharacterBody2D
 # Enemy base class for TUX — all sea creature enemies inherit from this.
 # Server-authoritative: AI runs only on server, position synced to clients.
+
+const EnemySpriteBuilder = preload("res://scenes/enemies/EnemySpriteBuilder.gd")
 
 enum EnemyType {
 	# Crustacean Knights
