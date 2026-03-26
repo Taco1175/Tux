@@ -6,6 +6,8 @@ extends Control
 @onready var hp_label: Label           = $TopLeft/HPLabel
 @onready var mana_bar: ProgressBar     = $TopLeft/ManaBar
 @onready var mana_label: Label         = $TopLeft/ManaLabel
+@onready var xp_bar: ProgressBar       = $TopLeft/XPBar
+@onready var level_label: Label        = $TopLeft/LevelLabel
 @onready var floor_label: Label        = $TopRight/FloorLabel
 @onready var token_label: Label        = $TopRight/TokenLabel
 @onready var hotbar: HBoxContainer     = $Bottom/Hotbar
@@ -56,10 +58,14 @@ func set_player(player: Node) -> void:
 	player_ref = player
 	player.hp_changed.connect(_on_hp_changed)
 	player.mana_changed.connect(_on_mana_changed)
+	player.xp_changed.connect(_on_xp_changed)
+	player.leveled_up.connect(_on_leveled_up)
 	player.item_picked_up.connect(_refresh_hotbar)
 
 	_on_hp_changed(player.current_hp, player.max_hp)
 	_on_mana_changed(player.current_mana, player.max_mana)
+	_on_xp_changed(player.current_xp, player.xp_to_next)
+	level_label.text = "Lv.%d" % player.level
 
 
 # -------------------------------------------------------
@@ -112,6 +118,24 @@ func _make_hotbar_slot(item: Dictionary) -> PanelContainer:
 func _update_floor_label() -> void:
 	if GameManager.current_run:
 		floor_label.text = _floor_display_name(GameManager.current_run.floor_number)
+
+
+func _on_xp_changed(current: int, needed: int) -> void:
+	if xp_bar:
+		xp_bar.max_value = needed
+		xp_bar.value = current
+
+
+func _on_leveled_up(new_level: int) -> void:
+	if level_label:
+		level_label.text = "Lv.%d" % new_level
+	# Flash level label gold
+	if level_label:
+		level_label.modulate = Color(1.0, 0.85, 0.2)
+		var tween := create_tween()
+		tween.tween_property(level_label, "modulate", Color.WHITE, 1.0)
+	# Brief "LEVEL UP!" message
+	show_message("Level %d!" % new_level, 1.5)
 
 
 func _floor_display_name(floor_num: int) -> String:

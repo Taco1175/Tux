@@ -50,6 +50,17 @@ modulate = Color(0.2, 0.5, 1, 1)
 [node name="ManaLabel" type="Label" parent="HUD/TopLeft"]
 text = "50 / 50"
 
+[node name="XPBar" type="ProgressBar" parent="HUD/TopLeft"]
+custom_minimum_size = Vector2(100, 5)
+max_value = 100.0
+value = 0.0
+modulate = Color(0.4, 1.0, 0.4, 1)
+show_percentage = false
+
+[node name="LevelLabel" type="Label" parent="HUD/TopLeft"]
+text = "Lv.1"
+modulate = Color(0.9, 0.8, 0.3, 1)
+
 [node name="TopRight" type="VBoxContainer" parent="HUD"]
 layout_mode = 1
 anchors_preset = 1

@@ -32,6 +32,13 @@ func _ready() -> void:
 	defense = 0
 	crit_chance = 0.10
 
+	# Macaroni's INT scaling makes them exponentially powerful late
+	hp_per_level   = 4
+	mana_per_level = 12
+	str_per_level  = 0
+	dex_per_level  = 0
+	int_per_level  = 3
+
 	super._ready()
 
 

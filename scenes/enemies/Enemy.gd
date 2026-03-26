@@ -1,3 +1,5 @@
+const EnemySpriteBuilder = preload("res://scenes/enemies/EnemySpriteBuilder.gd")
+
 extends CharacterBody2D
 # Enemy base class for TUX — all sea creature enemies inherit from this.
 # Server-authoritative: AI runs only on server, position synced to clients.
@@ -69,6 +71,8 @@ signal died(enemy_node: Node, position: Vector2)
 func _ready() -> void:
 	_configure_stats()
 	current_hp = max_hp
+	sprite.sprite_frames = EnemySpriteBuilder.build_frames(enemy_type)
+	sprite.play("idle")
 	if multiplayer.is_server():
 		detection_area.body_entered.connect(_on_body_entered_detection)
 		detection_area.body_exited.connect(_on_body_exited_detection)

@@ -1,4 +1,5 @@
-extends CharacterBody2D
+const SpriteFramesBuilder = preload("res://scenes/player/SpriteFramesBuilder.gd")
+
 
 # Base player class — all four siblings inherit from this.
 # Networked: each player is authoritative over their own movement;
@@ -45,10 +46,27 @@ var invincibility_timer: float = 0.0
 const INVINCIBILITY_DURATION := 0.5
 
 # -------------------------------------------------------
+# Leveling
+# -------------------------------------------------------
+var level: int = 1
+var current_xp: int = 0
+var xp_to_next: int = 100
+
+# XP thresholds scale: floor(100 * 1.35^(level-1))
+# Stat gains per level (base values, subclasses can override)
+var hp_per_level: int     = 8
+var mana_per_level: int   = 4
+var str_per_level: int    = 1
+var dex_per_level: int    = 1
+var int_per_level: int    = 1
+
+# -------------------------------------------------------
 # Signals
 # -------------------------------------------------------
 signal hp_changed(new_hp: int, max_hp: int)
 signal mana_changed(new_mana: int, max_mana: int)
+signal xp_changed(current: int, needed: int)
+signal leveled_up(new_level: int)
 signal died(peer_id: int)
 signal item_picked_up(item: Resource)
 signal damage_taken(amount: int)
@@ -71,6 +89,10 @@ func _ready() -> void:
 		set_physics_process(false)
 		# Still process for animation sync
 		return
+
+	# Build sprite frames from the class sheet
+	sprite.sprite_frames = SpriteFramesBuilder.build_frames_for_class(player_class)
+	sprite.play("idle")
 
 	pickup_area.body_entered.connect(_on_pickup_area_entered)
 	hitbox.area_entered.connect(_on_hitbox_entered)
@@ -315,6 +337,73 @@ func _apply_random_effect() -> void:
 func _try_interact() -> void:
 	# Handled by child classes or via Area2D overlap with interactables
 	pass
+
+
+# -------------------------------------------------------
+# Leveling (server-authoritative, synced to client)
+# -------------------------------------------------------
+func add_xp(amount: int) -> void:
+	if not is_local_player:
+		return
+	_server_add_xp.rpc_id(1, amount)
+
+
+@rpc("any_peer", "reliable")
+func _server_add_xp(amount: int) -> void:
+	if not multiplayer.is_server():
+		return
+	current_xp += amount
+	if current_xp >= xp_to_next:
+		_level_up()
+	_sync_xp.rpc(level, current_xp, xp_to_next)
+
+
+@rpc("authority", "reliable")
+func _sync_xp(lv: int, xp: int, needed: int) -> void:
+	level = lv
+	current_xp = xp
+	xp_to_next = needed
+	xp_changed.emit(current_xp, xp_to_next)
+
+
+func _level_up() -> void:
+	current_xp -= xp_to_next
+	level += 1
+	xp_to_next = int(100 * pow(1.35, level - 1))
+
+	# Stat gains
+	max_hp   += hp_per_level
+	max_mana += mana_per_level
+	strength    += str_per_level
+	dexterity   += dex_per_level
+	intelligence+= int_per_level
+
+	# Restore a portion of HP/mana on level up (feels great)
+	current_hp   = min(current_hp + hp_per_level * 2, max_hp)
+	current_mana = min(current_mana + mana_per_level, max_mana)
+
+	_sync_level_up.rpc(level, max_hp, current_hp, max_mana, current_mana,
+		strength, dexterity, intelligence)
+
+	# Award a tide token bonus on level up
+	if GameManager.current_run:
+		GameManager.current_run.run_currency += level
+
+
+@rpc("authority", "call_local", "reliable")
+func _sync_level_up(lv: int, mhp: int, chp: int, mmana: int, cmana: int,
+		str_: int, dex: int, int_: int) -> void:
+	level       = lv
+	max_hp      = mhp
+	current_hp  = chp
+	max_mana    = mmana
+	current_mana= cmana
+	strength    = str_
+	dexterity   = dex
+	intelligence= int_
+	hp_changed.emit(current_hp, max_hp)
+	mana_changed.emit(current_mana, max_mana)
+	leveled_up.emit(level)
 
 
 func _on_pickup_area_entered(body: Node) -> void:

@@ -30,6 +30,13 @@ func _ready() -> void:
 	crit_chance = 0.18   # High base crit
 	crit_multiplier = 2.5  # Crits hit HARD
 
+	# Gentoo scales into burst damage — dex and crit compound fast
+	hp_per_level   = 5
+	mana_per_level = 4
+	str_per_level  = 0
+	dex_per_level  = 3
+	int_per_level  = 0
+
 	super._ready()
 
 

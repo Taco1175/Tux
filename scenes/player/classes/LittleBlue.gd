@@ -30,6 +30,13 @@ func _ready() -> void:
 	defense = 2
 	crit_chance = 0.08
 
+	# Little Blue is balanced — grows evenly, never peaks, never falls behind
+	hp_per_level   = 8
+	mana_per_level = 6
+	str_per_level  = 1
+	dex_per_level  = 1
+	int_per_level  = 1
+
 	super._ready()
 
 

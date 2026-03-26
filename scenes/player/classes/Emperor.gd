@@ -30,6 +30,13 @@ func _ready() -> void:
 	defense = 4
 	crit_chance = 0.04
 
+	# Emperor grows into a tank — big HP, armor scaling
+	hp_per_level   = 14
+	mana_per_level = 2
+	str_per_level  = 2
+	dex_per_level  = 0
+	int_per_level  = 0
+
 	super._ready()
 
 
