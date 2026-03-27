@@ -11,20 +11,22 @@ const CLASS_DESCS := [
 	"The youngest. Unnerving calm.\nGlass cannon mage.\nAccidentally the most powerful.",
 ]
 
-@onready var host_button: Button        = $UI/ConnectionPanel/HostButton
-@onready var join_button: Button        = $UI/ConnectionPanel/JoinButton
-@onready var host_online_button: Button = $UI/ConnectionPanel/HostOnlineButton
-@onready var join_online_button: Button = $UI/ConnectionPanel/JoinOnlineButton
-@onready var address_input: LineEdit    = $UI/ConnectionPanel/AddressInput
-@onready var port_input: LineEdit       = $UI/ConnectionPanel/PortInput
-@onready var room_code_input: LineEdit  = $UI/ConnectionPanel/RoomCodeInput
-@onready var room_code_display: Label   = $UI/RoomCodeDisplay
-@onready var status_label: Label        = $UI/StatusLabel
-@onready var player_list: VBoxContainer = $UI/PlayerList
-@onready var class_selector: HBoxContainer = $UI/ClassSelector
-@onready var ready_button: Button       = $UI/ReadyButton
-@onready var start_button: Button       = $UI/StartButton
-@onready var token_label: Label         = $UI/TokenLabel
+@onready var host_button: Button           = $Panel/Margin/UI/LANRow/HostButton
+@onready var join_button: Button           = $Panel/Margin/UI/LANRow/JoinButton
+@onready var host_online_button: Button    = $Panel/Margin/UI/OnlineRow/HostOnlineButton
+@onready var join_online_button: Button    = $Panel/Margin/UI/OnlineRow/JoinOnlineButton
+@onready var address_input: LineEdit       = $Panel/Margin/UI/LANRow/AddressInput
+@onready var port_input: LineEdit          = $Panel/Margin/UI/LANRow/PortInput
+@onready var room_code_input: LineEdit     = $Panel/Margin/UI/OnlineRow/RoomCodeInput
+@onready var room_code_display: Label      = $Panel/Margin/UI/RoomCodeDisplay
+@onready var status_label: Label           = $Panel/Margin/UI/StatusLabel
+@onready var player_list: VBoxContainer    = $Panel/Margin/UI/PlayerList
+@onready var class_selector: HBoxContainer = $Panel/Margin/UI/ClassRow/ClassInfo/ClassSelector
+@onready var class_desc_label: Label       = $Panel/Margin/UI/ClassRow/ClassInfo/ClassDescLabel
+@onready var class_portrait: TextureRect   = $Panel/Margin/UI/ClassRow/ClassPortrait
+@onready var ready_button: Button          = $Panel/Margin/UI/BottomRow/ReadyButton
+@onready var start_button: Button          = $Panel/Margin/UI/BottomRow/StartButton
+@onready var token_label: Label            = $Panel/Margin/UI/BottomRow/TokenLabel
 
 var selected_class: int = 0
 var is_ready: bool = false
@@ -40,7 +42,6 @@ func _ready() -> void:
 
 	NetworkManager.player_connected.connect(_on_player_connected)
 	NetworkManager.player_disconnected.connect(_on_player_disconnected)
-	NetworkManager.all_players_ready.connect(_on_all_players_ready)
 	NetworkManager.server_disconnected.connect(_on_server_disconnected)
 	NetworkManager.room_created.connect(_on_room_created)
 	NetworkManager.room_joined.connect(_on_room_joined)
@@ -52,6 +53,7 @@ func _ready() -> void:
 	token_label.text = "Tide Tokens: %d" % UnlockManager.tide_tokens
 
 	_build_class_selector()
+	_update_class_preview(selected_class)
 
 
 func _build_class_selector() -> void:
@@ -80,6 +82,29 @@ func _highlight_class(index: int) -> void:
 		btn.modulate = Color.WHITE if i != index else Color(1.0, 0.85, 0.2)
 
 
+const CLASS_SHEET_PATHS := [
+	"res://assets/sprites/players/emperor_sheet.png",
+	"res://assets/sprites/players/gentoo_sheet.png",
+	"res://assets/sprites/players/little_blue_sheet.png",
+	"res://assets/sprites/players/macaroni_sheet.png",
+]
+
+func _update_class_preview(index: int) -> void:
+	class_desc_label.text = CLASS_DESCS[index]
+	if not _is_class_available(index):
+		class_portrait.texture = null
+		class_desc_label.text = "🔒 Locked — earn Tide Tokens to unlock.\n" + CLASS_DESCS[index]
+		return
+	var sheet := load(CLASS_SHEET_PATHS[index]) as Texture2D
+	if sheet:
+		var atlas := AtlasTexture.new()
+		atlas.atlas = sheet
+		atlas.region = Rect2(0, 0, 16, 16)  # first idle frame
+		class_portrait.texture = atlas
+	else:
+		class_portrait.texture = null
+
+
 # -------------------------------------------------------
 # Connection — LAN
 # -------------------------------------------------------
@@ -87,10 +112,11 @@ func _on_host_pressed() -> void:
 	var port := int(port_input.text) if port_input.text.is_valid_int() else NetworkManager.DEFAULT_PORT
 	var err := NetworkManager.host_game(port)
 	if err == OK:
-		status_label.text = "Hosting on LAN port %d — share your IP with friends on the same network." % port
+		status_label.text = "Hosting on port %d. Share your IP with friends." % port
 		_lock_connection_buttons()
 		start_button.visible = true
-		start_button.disabled = true
+		start_button.disabled = false  # Host can start anytime
+		ready_button.disabled = false
 		_refresh_player_list()
 	else:
 		status_label.text = "Failed to host. Check port."
@@ -129,17 +155,17 @@ func _on_join_online_pressed() -> void:
 
 
 func _on_room_created(code: String) -> void:
-	room_code_display.text = "Room Code: %s\nShare this with friends!" % code
+	room_code_display.text = "Room Code: %s" % code
 	room_code_display.visible = true
-	status_label.text = "Online room created — waiting for players…"
+	status_label.text = "Room created. Share the code with friends."
 	start_button.visible = true
-	start_button.disabled = true
+	start_button.disabled = false
 	ready_button.disabled = false
 	_refresh_player_list()
 
 
 func _on_room_joined(_peer_count: int) -> void:
-	status_label.text = "Joined room! Waiting for host to start…"
+	status_label.text = "Joined! Waiting for host to start…"
 	ready_button.disabled = false
 
 
@@ -168,10 +194,15 @@ func _unlock_connection_buttons() -> void:
 func _on_class_selected(index: int) -> void:
 	selected_class = index
 	_highlight_class(index)
+	_update_class_preview(index)
 	var local_id := multiplayer.get_unique_id()
 	if NetworkManager.players.has(local_id):
 		NetworkManager.players[local_id]["chosen_class"] = index
-	NetworkManager._register_player.rpc_id(1, NetworkManager.players.get(local_id, NetworkManager._default_player_info()))
+	var info: Dictionary = NetworkManager.players.get(local_id, NetworkManager._default_player_info())
+	if multiplayer.is_server():
+		NetworkManager._register_player(info)
+	else:
+		NetworkManager._register_player.rpc_id(1, info)
 
 
 # -------------------------------------------------------
@@ -180,7 +211,8 @@ func _on_class_selected(index: int) -> void:
 func _on_ready_pressed() -> void:
 	is_ready = not is_ready
 	ready_button.text = "Unready" if is_ready else "Ready"
-	NetworkManager.set_player_ready.rpc(is_ready)
+	if not multiplayer.is_server():
+		NetworkManager.set_player_ready.rpc_id(1, is_ready)
 
 
 func _on_start_pressed() -> void:
@@ -189,24 +221,18 @@ func _on_start_pressed() -> void:
 	NetworkManager.server_start_game()
 
 
-func _on_all_players_ready() -> void:
-	if multiplayer.is_server():
-		start_button.disabled = false
-		status_label.text = "All players ready — host can start!"
-
-
 # -------------------------------------------------------
-# Player list refresh
+# Player list
 # -------------------------------------------------------
-func _on_player_connected(peer_id: int, _info: Dictionary) -> void:
-	status_label.text = "Player joined (%d/%d)" % [NetworkManager.players.size(), NetworkManager.MAX_PLAYERS]
+func _on_player_connected(_peer_id: int, _info: Dictionary) -> void:
+	status_label.text = "Players: %d/%d" % [NetworkManager.players.size(), NetworkManager.MAX_PLAYERS]
 	_refresh_player_list()
 	if not multiplayer.is_server():
 		ready_button.disabled = false
 
 
-func _on_player_disconnected(peer_id: int) -> void:
-	status_label.text = "Player left."
+func _on_player_disconnected(_peer_id: int) -> void:
+	status_label.text = "A player left."
 	_refresh_player_list()
 
 
@@ -218,11 +244,11 @@ func _on_server_disconnected() -> void:
 func _refresh_player_list() -> void:
 	for child in player_list.get_children():
 		child.queue_free()
-
 	for peer_id in NetworkManager.players:
 		var info: Dictionary = NetworkManager.players[peer_id]
 		var label := Label.new()
-		var class_name_str := CLASS_NAMES[info.get("chosen_class", 0)]
+		var class_name_str: String = CLASS_NAMES[info.get("chosen_class", 0)]
 		var ready_str := "✓" if info.get("ready", false) else "…"
 		label.text = "[%s] %s — %s" % [ready_str, info.get("name", "?"), class_name_str]
+		label.add_theme_font_size_override("font_size", 13)
 		player_list.add_child(label)

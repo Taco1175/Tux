@@ -13,7 +13,7 @@ var unlocks: Dictionary = {
 	"class_emperor":    true,
 	"class_gentoo":     false,
 	"class_little_blue": false,
-	"class_macaroni":   true,
+	"class_macaroni":   false,
 
 	# Starting relic slots (first is free, extras unlocked)
 	"relic_slot_2": false,
@@ -40,6 +40,7 @@ var unlocks: Dictionary = {
 const SHOP := [
 	{ "key": "class_gentoo",          "cost": 10, "label": "Unlock: Gentoo (Rogue)",         "desc": "The chaotic middle sibling. Fast. Reckless. Somehow always fine." },
 	{ "key": "class_little_blue",     "cost": 10, "label": "Unlock: Little Blue (?)",          "desc": "The peacekeeper. Snaps exactly once. You do not want to be there for it." },
+	{ "key": "class_macaroni",        "cost": 15, "label": "Unlock: Macaroni (Mage)",          "desc": "The youngest. Unnerving calm. Accidentally the most powerful one there." },
 	{ "key": "relic_slot_2",          "cost": 8,  "label": "Relic Slot 2",                    "desc": "Carry one more cursed object into the deep. What could go wrong." },
 	{ "key": "relic_slot_3",          "cost": 15, "label": "Relic Slot 3",                    "desc": "Three relics. You are fully unhinged. We respect it." },
 	{ "key": "item_pool_claw_daggers","cost": 5,  "label": "Item Pool: Claw Daggers",         "desc": "Adds Claw Daggers to the loot pool. Gentoo's favourite." },
@@ -47,6 +48,9 @@ const SHOP := [
 	{ "key": "item_pool_freeze_globe","cost": 6,  "label": "Item Pool: Freeze Globe",         "desc": "Adds Freeze Globe throwables to the loot pool." },
 	{ "key": "item_pool_cursed_mackerel", "cost": 8, "label": "Item Pool: Cursed Mackerel",  "desc": "You saw the description. You still want it unlocked. Respect." },
 ]
+
+var saved_items: Array = []  # Permanently saved items from completed runs
+const MAX_SAVED_ITEMS := 20
 
 signal tokens_changed(new_total: int)
 signal unlock_purchased(key: String)
@@ -102,10 +106,29 @@ func process_run_end(run_data: GameManager.RunData, choice: GameManager.EndingCh
 
 
 # -------------------------------------------------------
+# Saved items (persist between runs)
+# -------------------------------------------------------
+func save_item(item: Dictionary) -> bool:
+	if saved_items.size() >= MAX_SAVED_ITEMS:
+		return false
+	saved_items.append(item.duplicate(true))
+	save_data()
+	return true
+
+
+func get_saved_items() -> Array:
+	return saved_items
+
+
+# -------------------------------------------------------
 # Persistence
 # -------------------------------------------------------
 func save_data() -> void:
-	var data := { "tide_tokens": tide_tokens, "unlocks": unlocks }
+	var data := {
+		"tide_tokens": tide_tokens,
+		"unlocks": unlocks,
+		"saved_items": saved_items,
+	}
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file:
 		file.store_var(data)
@@ -124,3 +147,6 @@ func load_data() -> void:
 				for key in saved_unlocks:
 					if unlocks.has(key):
 						unlocks[key] = saved_unlocks[key]
+			var loaded_items: Variant = data.get("saved_items", [])
+			if loaded_items is Array:
+				saved_items = loaded_items

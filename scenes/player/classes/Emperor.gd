@@ -64,14 +64,26 @@ func _request_shield_bash(origin: Vector2, facing_left: bool) -> void:
 	if not multiplayer.is_server():
 		return
 	var direction := Vector2.LEFT if facing_left else Vector2.RIGHT
+	# Damage all enemies in a frontal arc
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		var to_enemy: Vector2 = (enemy as Node2D).global_position - origin
+		var dist: float = to_enemy.length()
+		if dist <= SHIELD_BASH_RANGE:
+			# Must be roughly in the facing direction (dot > 0.2 gives ~78° cone)
+			if dist < 1.0 or to_enemy.normalized().dot(direction) > 0.2:
+				(enemy as CharacterBody2D).take_damage(SHIELD_BASH_DAMAGE)
+				# Apply knockback by pushing enemy velocity
+				(enemy as CharacterBody2D).velocity += direction * SHIELD_BASH_KNOCKBACK
 	_execute_shield_bash.rpc(origin, direction)
 
 
-@rpc("authority", "reliable")
-func _execute_shield_bash(origin: Vector2, direction: Vector2) -> void:
-	# Visual/sound feedback on all clients; damage applied server-side via Game scene
-	# The Game scene listens for this and checks enemy overlap
-	pass
+@rpc("authority", "call_local", "reliable")
+func _execute_shield_bash(_origin: Vector2, _direction: Vector2) -> void:
+	# Visual flash on all clients
+	sprite.modulate = Color(0.5, 0.8, 1.0)
+	await get_tree().create_timer(0.2).timeout
+	if sprite:
+		sprite.modulate = Color.WHITE
 
 
 # Passive: block chance reduces damage

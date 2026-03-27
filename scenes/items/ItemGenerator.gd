@@ -151,12 +151,12 @@ static func _generate_weapon_name(base: String, rarity: int, affixes: Array) -> 
 	if rarity == ItemDatabase.Rarity.COMMON and affixes.is_empty():
 		return base  # "Flipper Blade" — nothing fancy
 
-	var result := base
+	var result: String = base
 	if rarity >= ItemDatabase.Rarity.UNCOMMON:
-		var prefix := ItemDatabase.WEAPON_PREFIXES[randi() % ItemDatabase.WEAPON_PREFIXES.size()]
+		var prefix: String = ItemDatabase.WEAPON_PREFIXES[randi() % ItemDatabase.WEAPON_PREFIXES.size()]
 		result = prefix + " " + result
 	if rarity >= ItemDatabase.Rarity.RARE:
-		var suffix := ItemDatabase.WEAPON_SUFFIXES[randi() % ItemDatabase.WEAPON_SUFFIXES.size()]
+		var suffix: String = ItemDatabase.WEAPON_SUFFIXES[randi() % ItemDatabase.WEAPON_SUFFIXES.size()]
 		result = result + " " + suffix
 	return result
 
@@ -164,10 +164,10 @@ static func _generate_weapon_name(base: String, rarity: int, affixes: Array) -> 
 static func _generate_armor_name(base: String, rarity: int, _affixes: Array) -> String:
 	if rarity == ItemDatabase.Rarity.COMMON:
 		return base
-	var prefix := ItemDatabase.WEAPON_PREFIXES[randi() % ItemDatabase.WEAPON_PREFIXES.size()]
-	var result := prefix + " " + base
+	var prefix: String = ItemDatabase.WEAPON_PREFIXES[randi() % ItemDatabase.WEAPON_PREFIXES.size()]
+	var result: String = prefix + " " + base
 	if rarity >= ItemDatabase.Rarity.EPIC:
-		var suffix := ItemDatabase.WEAPON_SUFFIXES[randi() % ItemDatabase.WEAPON_SUFFIXES.size()]
+		var suffix: String = ItemDatabase.WEAPON_SUFFIXES[randi() % ItemDatabase.WEAPON_SUFFIXES.size()]
 		result = result + " " + suffix
 	return result
 

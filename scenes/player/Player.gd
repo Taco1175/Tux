@@ -35,7 +35,7 @@ var crit_multiplier: float = 1.5
 # -------------------------------------------------------
 const INVENTORY_SIZE := 16
 var inventory: Array = []         # Array of ItemData
-var equipped_weapon: Resource = null
+var equipped_weapon = null
 var equipped_armor: Dictionary = {}   # slot -> ItemData
 var relics: Array = []            # passive relic items
 
@@ -46,6 +46,16 @@ var is_dead: bool = false
 var is_invincible: bool = false
 var invincibility_timer: float = 0.0
 const INVINCIBILITY_DURATION := 0.5
+
+# Heal-over-time state
+var hot_amount: int = 0
+var hot_ticks_left: int = 0
+var hot_tick_timer: float = 0.0
+const HOT_TICK_INTERVAL := 1.0
+
+# Damage boost state
+var damage_boost_multiplier: float = 1.0
+var damage_boost_timer: float = 0.0
 
 # -------------------------------------------------------
 # Leveling
@@ -70,7 +80,7 @@ signal mana_changed(new_mana: int, max_mana: int)
 signal xp_changed(current: int, needed: int)
 signal leveled_up(new_level: int)
 signal died(peer_id: int)
-signal item_picked_up(item: Resource)
+signal item_picked_up(item: Dictionary)
 signal damage_taken(amount: int)
 
 # -------------------------------------------------------
@@ -96,8 +106,14 @@ func _ready() -> void:
 	sprite.sprite_frames = SpriteFramesBuilder.build_frames_for_class(player_class)
 	sprite.play("idle")
 
-	pickup_area.body_entered.connect(_on_pickup_area_entered)
+	pickup_area.area_entered.connect(_on_pickup_area_entered)
 	hitbox.area_entered.connect(_on_hitbox_entered)
+
+	# Equip saved items from vault at run start
+	if GameManager.current_state == GameManager.State.IN_GAME:
+		for saved_item in UnlockManager.get_saved_items():
+			var item_copy: Dictionary = saved_item.duplicate(true)
+			pick_up_item(item_copy)
 
 
 func _physics_process(delta: float) -> void:
@@ -105,6 +121,8 @@ func _physics_process(delta: float) -> void:
 		return
 
 	_handle_invincibility(delta)
+	_handle_hot(delta)
+	_handle_damage_boost(delta)
 	_handle_movement()
 	_handle_ability_input()
 
@@ -171,7 +189,7 @@ func take_damage(amount: int) -> void:
 		return
 
 	# Apply defense reduction
-	var final_damage := max(1, amount - _get_total_defense())
+	var final_damage: int = maxi(1, amount - _get_total_defense())
 	current_hp -= final_damage
 	damage_taken.emit(final_damage)
 	hp_changed.emit(current_hp, max_hp)
@@ -184,7 +202,7 @@ func take_damage(amount: int) -> void:
 		_die()
 
 
-@rpc("authority", "reliable")
+@rpc("authority", "call_local", "reliable")
 func heal(amount: int) -> void:
 	current_hp = min(current_hp + amount, max_hp)
 	hp_changed.emit(current_hp, max_hp)
@@ -219,22 +237,27 @@ func attack() -> void:
 func _request_attack() -> void:
 	if not multiplayer.is_server():
 		return
-	var sender := multiplayer.get_remote_sender_id()
 	var damage := _calculate_attack_damage()
-	# Server broadcasts the attack result to nearby enemies
-	_broadcast_attack.rpc(global_position, damage, sender)
+	const MELEE_RANGE := 26.0
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if global_position.distance_to((enemy as Node2D).global_position) <= MELEE_RANGE:
+			(enemy as CharacterBody2D).take_damage(damage)
+	_broadcast_attack.rpc(global_position)
 
 
-@rpc("authority", "reliable")
-func _broadcast_attack(origin: Vector2, damage: int, attacker_peer: int) -> void:
-	# Handled by the Game scene which coordinates enemy/player collision
-	pass
+@rpc("authority", "call_local", "reliable")
+func _broadcast_attack(_origin: Vector2) -> void:
+	# Visual feedback: briefly tint sprite to show attack landed
+	sprite.modulate = Color(1.0, 1.0, 0.6)
+	await get_tree().create_timer(0.1).timeout
+	if sprite:
+		sprite.modulate = Color.WHITE
 
 
 func _calculate_attack_damage() -> int:
 	var base := strength
-	if equipped_weapon:
-		var w: Dictionary = equipped_weapon
+	if equipped_weapon != null:
+		var w: Dictionary = equipped_weapon as Dictionary
 		base += randi_range(w.get("damage_min", 0), w.get("damage_max", 0))
 		# Apply affixes
 		for affix in w.get("affixes", []):
@@ -242,12 +265,16 @@ func _calculate_attack_damage() -> int:
 
 	# Crit check
 	var total_crit := crit_chance
-	if equipped_weapon:
-		for affix in equipped_weapon.get("affixes", []):
+	if equipped_weapon != null:
+		for affix in (equipped_weapon as Dictionary).get("affixes", []):
 			if affix["type"] == "crit_chance":
 				total_crit += affix["value"]
 	if randf() < total_crit:
 		base = int(base * crit_multiplier)
+
+	# Apply temporary damage boost
+	if damage_boost_multiplier > 1.0:
+		base = int(base * damage_boost_multiplier)
 
 	return max(1, base)
 
@@ -274,25 +301,75 @@ func _get_total_defense() -> int:
 # -------------------------------------------------------
 # Inventory
 # -------------------------------------------------------
-func pick_up_item(item: Resource) -> bool:
+func pick_up_item(item: Dictionary) -> bool:
 	if inventory.size() >= INVENTORY_SIZE:
 		return false
 	inventory.append(item)
 	item_picked_up.emit(item)
+	# Auto-equip weapons/armor if slot is empty
+	var item_type: int = item.get("item_type", -1)
+	if item_type == ItemDatabase.ItemType.WEAPON and equipped_weapon == null:
+		equip_item(item)
+	elif item_type == ItemDatabase.ItemType.ARMOR:
+		var slot: int = item.get("armor_type", ItemDatabase.ArmorType.HELMET)
+		if not equipped_armor.has(slot):
+			equip_item(item)
 	return true
 
 
 func equip_item(item: Dictionary) -> void:
+	# Unapply old item affixes
 	match item.get("item_type"):
 		ItemDatabase.ItemType.WEAPON:
+			if equipped_weapon != null:
+				_unapply_affixes(equipped_weapon as Dictionary)
 			equipped_weapon = item
 		ItemDatabase.ItemType.ARMOR:
 			var slot: int = item.get("armor_type", ItemDatabase.ArmorType.HELMET)
+			if equipped_armor.has(slot):
+				_unapply_affixes(equipped_armor[slot])
 			equipped_armor[slot] = item
+	# Apply new item affixes
+	_apply_affixes(item)
+
+
+func _apply_affixes(item: Dictionary) -> void:
+	for affix in item.get("affixes", []):
+		_apply_single_affix(affix, 1)
+
+
+func _unapply_affixes(item: Dictionary) -> void:
+	for affix in item.get("affixes", []):
+		_apply_single_affix(affix, -1)
+
+
+func _apply_single_affix(affix: Dictionary, sign: int) -> void:
+	var value: float = affix.get("value", 0.0)
+	match affix.get("type", ""):
+		"max_health":
+			max_hp += int(value) * sign
+			current_hp = mini(current_hp, max_hp)
+			hp_changed.emit(current_hp, max_hp)
+		"max_mana":
+			max_mana += int(value) * sign
+			current_mana = mini(current_mana, max_mana)
+			mana_changed.emit(current_mana, max_mana)
+		"flat_defense":
+			defense += int(value) * sign
+		"move_speed":
+			speed_multiplier += value * sign
+		"crit_chance":
+			crit_chance += value * sign
+		"regen":
+			pass  # Handled in _physics_process via equipped check
+		"attack_speed":
+			pass  # Handled in attack cooldown calculation
+		# Damage affixes are resolved at attack time, no stat change needed
 
 
 func use_consumable(item: Dictionary) -> void:
-	match item.get("effect", ""):
+	var effect: String = item.get("effect", "")
+	match effect:
 		"heal":          heal(item.get("power", 20))
 		"heal_over_time": _apply_hot(item.get("power", 10))
 		"damage_boost":   _apply_damage_boost(item.get("power", 1.5), 10.0)
@@ -301,12 +378,33 @@ func use_consumable(item: Dictionary) -> void:
 	inventory.erase(item)
 
 
-func _apply_hot(_power: int) -> void:
-	pass  # TODO: implement heal over time via tween/timer
+func _apply_hot(power: int) -> void:
+	hot_amount = power
+	hot_ticks_left = 5
+	hot_tick_timer = 0.0
 
 
-func _apply_damage_boost(_multiplier: float, _duration: float) -> void:
-	pass  # TODO: implement temporary damage buff
+func _handle_hot(delta: float) -> void:
+	if hot_ticks_left <= 0:
+		return
+	hot_tick_timer += delta
+	if hot_tick_timer >= HOT_TICK_INTERVAL:
+		hot_tick_timer -= HOT_TICK_INTERVAL
+		heal(hot_amount)
+		hot_ticks_left -= 1
+
+
+func _apply_damage_boost(multiplier: float, duration: float) -> void:
+	damage_boost_multiplier = multiplier
+	damage_boost_timer = duration
+
+
+func _handle_damage_boost(delta: float) -> void:
+	if damage_boost_timer <= 0:
+		return
+	damage_boost_timer -= delta
+	if damage_boost_timer <= 0:
+		damage_boost_multiplier = 1.0
 
 
 func _apply_invincibility(duration: float) -> void:
@@ -317,7 +415,7 @@ func _apply_invincibility(duration: float) -> void:
 
 func _apply_random_effect() -> void:
 	var effects := ["heal", "damage_boost", "invincibility", "chaos"]
-	var effect := effects[randi() % effects.size()]
+	var effect: String = effects[randi() % effects.size()]
 	match effect:
 		"heal":         heal(randi_range(10, 50))
 		"damage_boost": _apply_damage_boost(2.0, 5.0)
@@ -337,8 +435,35 @@ func _apply_random_effect() -> void:
 # Interaction
 # -------------------------------------------------------
 func _try_interact() -> void:
-	# Handled by child classes or via Area2D overlap with interactables
-	pass
+	const INTERACT_RANGE := 24.0
+	# Check for interactable nodes in range
+	for node in get_tree().get_nodes_in_group("interactable"):
+		if global_position.distance_to((node as Node2D).global_position) <= INTERACT_RANGE:
+			if node.has_method("interact"):
+				node.interact(self)
+				return
+	# Check for secret walls (server-side)
+	if multiplayer.is_server():
+		_try_break_secret_wall()
+	else:
+		_request_break_secret_wall.rpc_id(1, global_position)
+
+
+@rpc("any_peer", "reliable")
+func _request_break_secret_wall(pos: Vector2) -> void:
+	if not multiplayer.is_server():
+		return
+	_try_break_secret_wall_at(pos)
+
+
+func _try_break_secret_wall() -> void:
+	_try_break_secret_wall_at(global_position)
+
+
+func _try_break_secret_wall_at(pos: Vector2) -> void:
+	var game := get_tree().get_first_node_in_group("game_scene")
+	if game and game.has_method("try_break_secret_wall"):
+		game.try_break_secret_wall(pos)
 
 
 # -------------------------------------------------------
@@ -408,12 +533,12 @@ func _sync_level_up(lv: int, mhp: int, chp: int, mmana: int, cmana: int,
 	leveled_up.emit(level)
 
 
-func _on_pickup_area_entered(body: Node) -> void:
-	if body.is_in_group("items") and is_local_player:
-		var item_node := body
-		if item_node.has_method("get_item_data"):
-			pick_up_item(item_node.get_item_data())
-			item_node.queue_free()
+func _on_pickup_area_entered(area: Area2D) -> void:
+	if area.is_in_group("items") and is_local_player:
+		if area.has_method("get_item_data"):
+			var data: Dictionary = area.get_item_data()
+			if pick_up_item(data):
+				area.queue_free()
 
 
 func _on_hitbox_entered(_area: Area2D) -> void:

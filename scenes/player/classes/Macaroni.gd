@@ -75,9 +75,11 @@ func _request_spell_bolt(origin: Vector2, facing_left: bool) -> void:
 	_broadcast_spell_bolt.rpc(origin, direction, damage)
 
 
-@rpc("authority", "reliable")
-func _broadcast_spell_bolt(_origin: Vector2, _direction: Vector2, _damage: int) -> void:
-	pass  # Game scene spawns projectile
+@rpc("authority", "call_local", "reliable")
+func _broadcast_spell_bolt(origin: Vector2, direction: Vector2, damage: int) -> void:
+	var game := get_tree().get_first_node_in_group("game_scene")
+	if game:
+		game.spawn_projectile(origin, direction, 200.0, damage, 160.0, 0.0)
 
 
 # Override: Secondary = Fireball — AoE ice/fire explosion
@@ -100,9 +102,11 @@ func _request_fireball(origin: Vector2, target: Vector2) -> void:
 	_broadcast_fireball.rpc(origin, target, damage, FIREBALL_RADIUS)
 
 
-@rpc("authority", "reliable")
-func _broadcast_fireball(_origin: Vector2, _target: Vector2, _damage: int, _radius: float) -> void:
-	pass  # Game scene spawns AoE explosion
+@rpc("authority", "call_local", "reliable")
+func _broadcast_fireball(origin: Vector2, target: Vector2, damage: int, radius: float) -> void:
+	var game := get_tree().get_first_node_in_group("game_scene")
+	if game:
+		game.spawn_fireball(origin, target, damage, radius)
 
 
 func get_loot_class_bias() -> int:

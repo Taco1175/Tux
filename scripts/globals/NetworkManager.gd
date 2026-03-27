@@ -78,7 +78,8 @@ func host_online(relay_url: String = DEFAULT_RELAY_URL) -> void:
 		return
 	_relay_active = true
 	# Wait for socket to open, then send host request
-	await _wait_for_relay_open()
+	if not await _wait_for_relay_open():
+		return
 	_relay_send({"action": "host"})
 
 
@@ -92,7 +93,8 @@ func join_online(code: String, relay_url: String = DEFAULT_RELAY_URL) -> void:
 		relay_error.emit("Could not connect to relay server.")
 		return
 	_relay_active = true
-	await _wait_for_relay_open()
+	if not await _wait_for_relay_open():
+		return
 	_relay_send({"action": "join", "code": _room_code})
 
 
@@ -103,10 +105,24 @@ func get_room_code() -> String:
 # -------------------------------------------------------
 # Relay internals
 # -------------------------------------------------------
-func _wait_for_relay_open() -> void:
+func _wait_for_relay_open() -> bool:
+	var timeout := 5.0  # seconds
+	var elapsed := 0.0
 	while _relay_ws and _relay_ws.get_ready_state() == WebSocketPeer.STATE_CONNECTING:
 		_relay_ws.poll()
 		await get_tree().process_frame
+		elapsed += get_process_delta_time()
+		if elapsed >= timeout:
+			_relay_active = false
+			_relay_ws = null
+			relay_error.emit("Relay connection timed out.")
+			return false
+	if not _relay_ws or _relay_ws.get_ready_state() != WebSocketPeer.STATE_OPEN:
+		_relay_active = false
+		_relay_ws = null
+		relay_error.emit("Could not reach relay server.")
+		return false
+	return true
 
 
 func _relay_send(msg: Dictionary) -> void:
@@ -195,6 +211,8 @@ func register_player(info: Dictionary) -> void:
 @rpc("any_peer", "reliable")
 func _register_player(info: Dictionary) -> void:
 	var sender_id := multiplayer.get_remote_sender_id()
+	if sender_id == 0:
+		sender_id = multiplayer.get_unique_id()
 	players[sender_id] = info
 	player_connected.emit(sender_id, info)
 	_check_all_ready()
@@ -222,13 +240,14 @@ func _check_all_ready() -> void:
 # -------------------------------------------------------
 # Game start sync (server -> all clients)
 # -------------------------------------------------------
-@rpc("authority", "reliable")
-func start_game_rpc(run_seed: int, class_assignments: Dictionary) -> void:
+@rpc("authority", "call_local", "reliable")
+func start_game_rpc(_run_seed: int, class_assignments: Dictionary) -> void:
 	var selected: Array[int] = []
 	for pid in class_assignments:
 		selected.append(class_assignments[pid])
-	GameManager.start_run(selected)
-	get_tree().change_scene_to_file("res://scenes/game/Game.tscn")
+	# Store class selections but don't start a run yet — go to hub first
+	GameManager.change_state(GameManager.State.HUB)
+	get_tree().change_scene_to_file("res://scenes/hub/Hub.tscn")
 
 
 func server_start_game() -> void:
@@ -277,5 +296,3 @@ func _default_player_info() -> Dictionary:
 		"chosen_class": 0,
 		"ready": false,
 	}
-
-

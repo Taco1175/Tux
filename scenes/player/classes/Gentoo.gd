@@ -67,12 +67,20 @@ func _request_combo_finisher() -> void:
 	if not multiplayer.is_server():
 		return
 	var damage := _calculate_attack_damage() * 2
+	const COMBO_HIT_RANGE := 32.0
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if global_position.distance_to((enemy as Node2D).global_position) <= COMBO_HIT_RANGE:
+			enemy.take_damage(damage)
 	_broadcast_combo_finisher.rpc(global_position, damage)
 
 
-@rpc("authority", "reliable")
+@rpc("authority", "call_local", "reliable")
 func _broadcast_combo_finisher(_origin: Vector2, _damage: int) -> void:
-	pass  # Game scene handles hit detection
+	# Visual flash: yellow burst for the finisher
+	sprite.modulate = Color(1.0, 0.9, 0.2)
+	await get_tree().create_timer(0.12).timeout
+	if sprite:
+		sprite.modulate = Color.WHITE
 
 
 # Override: Secondary = Dash through enemies (brief invincibility)

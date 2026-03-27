@@ -4,6 +4,7 @@ extends Node
 enum State {
 	MAIN_MENU,
 	LOBBY,
+	HUB,
 	LOADING,
 	IN_GAME,
 	PAUSED,
@@ -55,6 +56,18 @@ func end_run(choice: EndingChoice) -> void:
 		UnlockManager.process_run_end(current_run, choice)
 	run_ended.emit(choice)
 	change_state(State.GAME_OVER)
+
+
+func return_to_hub() -> void:
+	current_run = null
+	change_state(State.HUB)
+	get_tree().change_scene_to_file("res://scenes/hub/Hub.tscn")
+
+
+func enter_dungeon(selected_classes: Array[int]) -> void:
+	start_run(selected_classes)
+	change_state(State.IN_GAME)
+	get_tree().change_scene_to_file("res://scenes/game/Game.tscn")
 
 
 func pause_game() -> void:

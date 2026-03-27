@@ -46,8 +46,14 @@ var aggro_range: float = 96.0
 var attack_range: float = 20.0
 var attack_cooldown_max: float = 1.2
 var attack_cooldown: float = 0.0
+var defense: int = 0
 var loot_table_weight: int = 1   # higher = more/better loot
 var xp_reward: int = 10
+
+# Boss phase tracking
+var boss_phase: int = 1
+var is_boss: bool = false
+var enrage_speed_mult: float = 1.0
 
 # -------------------------------------------------------
 # AI state
@@ -176,6 +182,7 @@ func _configure_stats() -> void:
 			max_hp = 55; damage = 10; move_speed = 38.0; defense = 4; xp_reward = 18
 		EnemyType.LOBSTER_WARLORD:
 			max_hp = 90; damage = 15; move_speed = 35.0; defense = 6; xp_reward = 35
+			is_boss = true
 		EnemyType.EEL_SCOUT:
 			max_hp = 22; damage = 8; move_speed = 75.0; attack_range = 16.0; xp_reward = 10
 		EnemyType.ANGLERFISH:
@@ -191,12 +198,15 @@ func _configure_stats() -> void:
 		EnemyType.CRAB_WARLORD:   # Zone 2 boss
 			max_hp = 320; damage = 25; move_speed = 42.0; defense = 8
 			attack_cooldown_max = 0.8; loot_table_weight = 5; xp_reward = 150
+			is_boss = true
 		EnemyType.THE_LEVIATHAN:  # Zone 3 boss
 			max_hp = 600; damage = 35; move_speed = 50.0; defense = 12
 			attack_cooldown_max = 1.0; loot_table_weight = 8; xp_reward = 300
+			is_boss = true
 		EnemyType.THE_DROWNED_GOD: # Final boss
 			max_hp = 1200; damage = 45; move_speed = 40.0; defense = 15
 			attack_cooldown_max = 1.2; loot_table_weight = 10; xp_reward = 999
+			is_boss = true
 
 
 func _pick_patrol_point() -> void:
@@ -229,8 +239,41 @@ func take_damage(amount: int) -> void:
 	if ai_state == AIState.IDLE or ai_state == AIState.PATROL:
 		ai_state = AIState.CHASE
 
+	# Boss phase transitions
+	if is_boss:
+		_check_boss_phase()
+
 	if current_hp <= 0:
 		_die()
+
+
+func _check_boss_phase() -> void:
+	var hp_ratio := float(current_hp) / float(max_hp)
+	if boss_phase == 1 and hp_ratio <= 0.5:
+		boss_phase = 2
+		# Phase 2: faster attacks, increased damage
+		attack_cooldown_max *= 0.7
+		damage = int(damage * 1.3)
+		move_speed *= 1.2
+		_broadcast_boss_phase.rpc(2)
+	elif boss_phase == 2 and hp_ratio <= 0.25:
+		boss_phase = 3
+		# Phase 3: enrage — much faster, more damage
+		attack_cooldown_max *= 0.6
+		damage = int(damage * 1.4)
+		move_speed *= 1.3
+		enrage_speed_mult = 1.5
+		_broadcast_boss_phase.rpc(3)
+
+
+@rpc("authority", "call_local", "reliable")
+func _broadcast_boss_phase(phase: int) -> void:
+	boss_phase = phase
+	match phase:
+		2:
+			sprite.modulate = Color(1.0, 0.7, 0.3)  # Orange tint
+		3:
+			sprite.modulate = Color(1.0, 0.2, 0.2)  # Red enrage
 
 
 func _die() -> void:

@@ -72,13 +72,20 @@ func _use_secondary_ability() -> void:
 func _request_heal_pulse(origin: Vector2) -> void:
 	if not multiplayer.is_server():
 		return
+	for player in get_tree().get_nodes_in_group("players"):
+		if origin.distance_to((player as Node2D).global_position) <= HEAL_PULSE_RADIUS:
+			# heal() uses call_local so rpc() runs on server and all clients
+			player.heal.rpc(HEAL_PULSE_AMOUNT)
 	_broadcast_heal_pulse.rpc(origin, HEAL_PULSE_AMOUNT)
 
 
-@rpc("authority", "reliable")
-func _broadcast_heal_pulse(_origin: Vector2, amount: int) -> void:
-	# Game scene finds all players within radius and calls heal()
-	pass
+@rpc("authority", "call_local", "reliable")
+func _broadcast_heal_pulse(_origin: Vector2, _amount: int) -> void:
+	# Visual: green pulse ring
+	sprite.modulate = Color(0.4, 1.0, 0.5)
+	await get_tree().create_timer(0.3).timeout
+	if sprite:
+		sprite.modulate = Color.WHITE
 
 
 # "The Snap" — triggered when near death
@@ -96,8 +103,14 @@ func _trigger_snap() -> void:
 
 @rpc("authority", "call_local")
 func _announce_snap() -> void:
-	# UI shows dramatic message: "..."
-	pass
+	# Find HUD and show message (only local player sees their own HUD)
+	if not is_local_player:
+		return
+	var game := get_tree().get_first_node_in_group("game_scene")
+	if game:
+		var hud = game.get_node_or_null("HUD")
+		if hud and hud.has_method("show_message"):
+			hud.show_message("...", 2.0)
 
 
 func _end_snap() -> void:

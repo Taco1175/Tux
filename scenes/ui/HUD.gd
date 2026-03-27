@@ -14,10 +14,12 @@ extends Control
 @onready var message_box: PanelContainer    = $Center/MessageBox
 @onready var message_label: Label           = $Center/MessageBox/MessageLabel
 @onready var ending_panel: PanelContainer   = $Center/EndingPanel
-@onready var ending_title: Label            = $Center/EndingPanel/Title
-@onready var ending_desc: Label             = $Center/EndingPanel/Description
-@onready var ending_buttons: VBoxContainer  = $Center/EndingPanel/Buttons
+@onready var ending_title: Label            = $Center/EndingPanel/VBox/Title
+@onready var ending_desc: Label             = $Center/EndingPanel/VBox/Description
+@onready var ending_buttons: VBoxContainer  = $Center/EndingPanel/VBox/Buttons
 @onready var game_over_panel: PanelContainer = $Center/GameOverPanel
+@onready var inventory_ui: Control = $InventoryUI
+@onready var pause_panel: PanelContainer = $Center/PausePanel
 
 var player_ref: Node = null
 
@@ -43,9 +45,19 @@ const ENDING_DATA := {
 
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	message_box.hide()
 	ending_panel.hide()
 	game_over_panel.hide()
+	if pause_panel:
+		pause_panel.hide()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("inventory_open") and player_ref:
+		inventory_ui.toggle(player_ref)
+	if event.is_action_pressed("pause"):
+		_toggle_pause()
 
 	if GameManager.current_run:
 		floor_label.text = _floor_display_name(GameManager.current_run.floor_number)
@@ -88,7 +100,7 @@ func _on_mana_changed(mana: int, max_mana: int) -> void:
 	mana_label.text = "%d / %d" % [mana, max_mana]
 
 
-func _refresh_hotbar(_item: Resource) -> void:
+func _refresh_hotbar(_item: Dictionary) -> void:
 	if not player_ref:
 		return
 	for child in hotbar.get_children():
@@ -219,3 +231,57 @@ func show_game_over() -> void:
 		var floors := run.floor_number if run else 0
 		var tokens := run.run_currency if run else 0
 		label.text = "The deep claims another.\n\nFloors reached: %d\nTide Tokens earned: %d" % [floors, tokens]
+
+
+# -------------------------------------------------------
+# Pause menu
+# -------------------------------------------------------
+func _toggle_pause() -> void:
+	if GameManager.current_state == GameManager.State.PAUSED:
+		_resume()
+	elif GameManager.current_state == GameManager.State.IN_GAME:
+		_pause()
+
+
+func _pause() -> void:
+	GameManager.pause_game()
+	if pause_panel:
+		pause_panel.show()
+		_setup_pause_buttons()
+
+
+func _resume() -> void:
+	GameManager.resume_game()
+	if pause_panel:
+		pause_panel.hide()
+
+
+func _setup_pause_buttons() -> void:
+	var vbox := pause_panel.get_node_or_null("VBox")
+	if not vbox:
+		return
+	for child in vbox.get_children():
+		child.queue_free()
+
+	var title := Label.new()
+	title.text = "Paused"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 10)
+	vbox.add_child(title)
+
+	var resume_btn := Button.new()
+	resume_btn.text = "Resume"
+	resume_btn.add_theme_font_size_override("font_size", 8)
+	resume_btn.custom_minimum_size = Vector2(0, 16)
+	resume_btn.pressed.connect(_resume)
+	vbox.add_child(resume_btn)
+
+	var hub_btn := Button.new()
+	hub_btn.text = "Quit to Hub"
+	hub_btn.add_theme_font_size_override("font_size", 8)
+	hub_btn.custom_minimum_size = Vector2(0, 16)
+	hub_btn.pressed.connect(func():
+		_resume()  # Unpause first
+		GameManager.end_run(GameManager.EndingChoice.NONE)
+	)
+	vbox.add_child(hub_btn)
