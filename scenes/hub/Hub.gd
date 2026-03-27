@@ -62,7 +62,11 @@ func _build_hub_tilemap() -> void:
 		for col in 6:
 			source.create_tile(Vector2i(col, row))
 
-	# Wall collision
+	# Add source to tileset first so tile data can see physics layers
+	ts.add_source(source, 0)
+	tilemap.tile_set = ts
+
+	# Wall collision — must be set after tileset is assigned
 	var half := TILE_SIZE / 2.0
 	var wall_polygon := PackedVector2Array([
 		Vector2(-half, -half), Vector2(half, -half),
@@ -73,9 +77,6 @@ func _build_hub_tilemap() -> void:
 		if td:
 			td.add_collision_polygon(0)
 			td.set_collision_polygon_points(0, 0, wall_polygon)
-
-	ts.add_source(source, 0)
-	tilemap.tile_set = ts
 
 	# Paint the hub: a cozy room with walls around the edges
 	var wall_atlas := Vector2i(0, 0)  # Zone 1 wall (Flooded Ruins)

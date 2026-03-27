@@ -258,7 +258,7 @@ func server_start_game() -> void:
 	for pid in players:
 		assignments[pid] = players[pid].get("chosen_class", class_index)
 		class_index += 1
-	start_game_rpc.rpc(GameManager.current_run.seed if GameManager.current_run else randi(), assignments)
+	start_game_rpc.rpc(GameManager.current_run.run_seed if GameManager.current_run else randi(), assignments)
 
 
 # -------------------------------------------------------

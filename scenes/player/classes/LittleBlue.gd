@@ -65,7 +65,10 @@ func _use_secondary_ability() -> void:
 	if heal_pulse_cooldown > 0:
 		return
 	heal_pulse_cooldown = HEAL_PULSE_COOLDOWN_MAX
-	_request_heal_pulse.rpc_id(1, global_position)
+	if multiplayer.is_server():
+		_request_heal_pulse(global_position)
+	else:
+		_request_heal_pulse.rpc_id(1, global_position)
 
 
 @rpc("any_peer", "reliable")

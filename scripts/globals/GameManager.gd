@@ -42,7 +42,7 @@ func change_state(new_state: State) -> void:
 
 func start_run(selected_classes: Array[int]) -> void:
 	current_run = RunData.new()
-	current_run.seed = randi()
+	current_run.run_seed = randi()
 	current_run.selected_classes = selected_classes
 	current_run.floor_number = 0
 	current_run.run_currency = 0
@@ -86,7 +86,7 @@ func resume_game() -> void:
 # RunData: tracks all state for a single run
 # -------------------------------------------------------
 class RunData:
-	var seed: int = 0
+	var run_seed: int = 0
 	var floor_number: int = 0
 	var run_currency: int = 0          # "tide tokens" — spent in unlock shop
 	var selected_classes: Array[int] = []

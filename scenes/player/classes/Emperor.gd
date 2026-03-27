@@ -56,7 +56,10 @@ func _use_secondary_ability() -> void:
 	if shield_bash_cooldown > 0:
 		return
 	shield_bash_cooldown = SHIELD_BASH_COOLDOWN_MAX
-	_request_shield_bash.rpc_id(1, global_position, sprite.flip_h)
+	if multiplayer.is_server():
+		_request_shield_bash(global_position, sprite.flip_h)
+	else:
+		_request_shield_bash.rpc_id(1, global_position, sprite.flip_h)
 
 
 @rpc("any_peer", "reliable")

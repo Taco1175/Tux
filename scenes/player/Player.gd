@@ -96,15 +96,14 @@ func _ready() -> void:
 	peer_id = get_multiplayer_authority()
 	is_local_player = (peer_id == multiplayer.get_unique_id())
 
+	# Build sprite frames for all players (local and remote)
+	sprite.sprite_frames = SpriteFramesBuilder.build_frames_for_class(player_class)
+	sprite.play("idle")
+
 	if not is_local_player:
 		# Non-local players: disable local input processing
 		set_physics_process(false)
-		# Still process for animation sync
 		return
-
-	# Build sprite frames from the class sheet
-	sprite.sprite_frames = SpriteFramesBuilder.build_frames_for_class(player_class)
-	sprite.play("idle")
 
 	pickup_area.area_entered.connect(_on_pickup_area_entered)
 	hitbox.area_entered.connect(_on_hitbox_entered)
@@ -230,7 +229,10 @@ func _notify_death() -> void:
 func attack() -> void:
 	if not is_local_player:
 		return
-	_request_attack.rpc_id(1)
+	if multiplayer.is_server():
+		_request_attack()
+	else:
+		_request_attack.rpc_id(1)
 
 
 @rpc("any_peer", "reliable")
@@ -343,23 +345,23 @@ func _unapply_affixes(item: Dictionary) -> void:
 		_apply_single_affix(affix, -1)
 
 
-func _apply_single_affix(affix: Dictionary, sign: int) -> void:
+func _apply_single_affix(affix: Dictionary, multiplier: int) -> void:
 	var value: float = affix.get("value", 0.0)
 	match affix.get("type", ""):
 		"max_health":
-			max_hp += int(value) * sign
+			max_hp += int(value) * multiplier
 			current_hp = mini(current_hp, max_hp)
 			hp_changed.emit(current_hp, max_hp)
 		"max_mana":
-			max_mana += int(value) * sign
+			max_mana += int(value) * multiplier
 			current_mana = mini(current_mana, max_mana)
 			mana_changed.emit(current_mana, max_mana)
 		"flat_defense":
-			defense += int(value) * sign
+			defense += int(value) * multiplier
 		"move_speed":
-			speed_multiplier += value * sign
+			speed_multiplier += value * multiplier
 		"crit_chance":
-			crit_chance += value * sign
+			crit_chance += value * multiplier
 		"regen":
 			pass  # Handled in _physics_process via equipped check
 		"attack_speed":

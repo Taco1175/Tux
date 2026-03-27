@@ -79,7 +79,11 @@ func _setup_tileset() -> void:
 		for col in 6:
 			source.create_tile(Vector2i(col, row))
 
-	# Add full-tile collision polygon to wall tiles
+	# Add source to tileset first so tile data can see physics layers
+	ts.add_source(source, 0)
+	tilemap.tile_set = ts
+
+	# Add full-tile collision polygon to wall tiles (after tileset is assigned)
 	var half := TILE_SIZE / 2.0
 	var wall_polygon := PackedVector2Array([
 		Vector2(-half, -half), Vector2(half, -half),
@@ -93,9 +97,6 @@ func _setup_tileset() -> void:
 		if td:
 			td.add_collision_polygon(0)
 			td.set_collision_polygon_points(0, 0, wall_polygon)
-
-	ts.add_source(source, 0)
-	tilemap.tile_set = ts
 
 
 func _process(_delta: float) -> void:
@@ -120,8 +121,8 @@ func _generate_floor() -> void:
 		child.queue_free()
 
 	var run := GameManager.current_run
-	dungeon_data = BSPGenerator.generate(run.floor_number, run.seed)
-	_broadcast_floor.rpc(run.floor_number, run.seed)
+	dungeon_data = BSPGenerator.generate(run.floor_number, run.run_seed)
+	_broadcast_floor.rpc(run.floor_number, run.run_seed)
 	_build_tilemap()
 	_spawn_enemies()
 	_spawn_floor_items()

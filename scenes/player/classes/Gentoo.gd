@@ -56,7 +56,10 @@ func _use_primary_ability() -> void:
 	combo_timer = COMBO_WINDOW
 	# Third hit in a combo deals bonus damage
 	if combo_count >= 3:
-		_request_combo_finisher.rpc_id(1)
+		if multiplayer.is_server():
+			_request_combo_finisher()
+		else:
+			_request_combo_finisher.rpc_id(1)
 		combo_count = 0
 	else:
 		attack()

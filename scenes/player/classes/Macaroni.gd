@@ -61,7 +61,10 @@ func _use_primary_ability() -> void:
 	if current_mana >= 5:
 		current_mana -= 5
 		mana_changed.emit(current_mana, max_mana)
-		_request_spell_bolt.rpc_id(1, global_position, sprite.flip_h)
+		if multiplayer.is_server():
+			_request_spell_bolt(global_position, sprite.flip_h)
+		else:
+			_request_spell_bolt.rpc_id(1, global_position, sprite.flip_h)
 	else:
 		attack()  # Fallback to melee, deeply embarrassing for everyone
 
@@ -91,7 +94,10 @@ func _use_secondary_ability() -> void:
 	mana_changed.emit(current_mana, max_mana)
 
 	var mouse_pos := get_global_mouse_position() if is_local_player else global_position
-	_request_fireball.rpc_id(1, global_position, mouse_pos)
+	if multiplayer.is_server():
+		_request_fireball(global_position, mouse_pos)
+	else:
+		_request_fireball.rpc_id(1, global_position, mouse_pos)
 
 
 @rpc("any_peer", "reliable")
