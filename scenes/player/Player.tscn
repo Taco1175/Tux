@@ -20,8 +20,6 @@ radius = 14.0
 script = ExtResource("1_player")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
-animation = &"idle"
-autoplay = "idle"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 position = Vector2(0, 1)

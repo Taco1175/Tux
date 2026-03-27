@@ -290,9 +290,9 @@ func try_break_secret_wall(player_pos: Vector2) -> void:
 		return
 	var tile_pos := Vector2i(int(player_pos.x / TILE_SIZE), int(player_pos.y / TILE_SIZE))
 	# Check the 4 adjacent tiles for SECRET_WALL
-	var offsets := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	var offsets: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 	for offset in offsets:
-		var check := tile_pos + offset
+		var check: Vector2i = tile_pos + offset
 		if check.x >= 0 and check.x < BSPGenerator.MAP_WIDTH and check.y >= 0 and check.y < BSPGenerator.MAP_HEIGHT:
 			if dungeon_data.tiles[check.y][check.x] == BSPGenerator.TileType.SECRET_WALL:
 				dungeon_data.tiles[check.y][check.x] = BSPGenerator.TileType.FLOOR
