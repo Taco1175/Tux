@@ -1,8 +1,10 @@
-const EnemySpriteBuilder = preload("res://scenes/enemies/EnemySpriteBuilder.gd")
+
 
 extends CharacterBody2D
 # Enemy base class for TUX — all sea creature enemies inherit from this.
 # Server-authoritative: AI runs only on server, position synced to clients.
+
+const EnemySpriteBuilder = preload("res://scenes/enemies/EnemySpriteBuilder.gd")
 
 enum EnemyType {
 	# Crustacean Knights
@@ -44,8 +46,14 @@ var aggro_range: float = 96.0
 var attack_range: float = 20.0
 var attack_cooldown_max: float = 1.2
 var attack_cooldown: float = 0.0
+var defense: int = 0
 var loot_table_weight: int = 1   # higher = more/better loot
 var xp_reward: int = 10
+
+# Boss phase tracking
+var boss_phase: int = 1
+var is_boss: bool = false
+var enrage_speed_mult: float = 1.0
 
 # -------------------------------------------------------
 # AI state
@@ -67,18 +75,54 @@ signal died(enemy_node: Node, position: Vector2)
 @onready var detection_area: Area2D = $DetectionArea
 @onready var hitbox: Area2D = $Hitbox
 
+var hp_bar: ProgressBar = null
+
 
 func _ready() -> void:
 	_configure_stats()
 	current_hp = max_hp
 	sprite.sprite_frames = EnemySpriteBuilder.build_frames(enemy_type)
 	sprite.play("idle")
+	_create_hp_bar()
 	if multiplayer.is_server():
 		detection_area.body_entered.connect(_on_body_entered_detection)
 		detection_area.body_exited.connect(_on_body_exited_detection)
 		set_physics_process(true)
 	else:
 		set_physics_process(false)
+
+
+func _create_hp_bar() -> void:
+	hp_bar = ProgressBar.new()
+	hp_bar.max_value = max_hp
+	hp_bar.value = current_hp
+	hp_bar.show_percentage = false
+	hp_bar.custom_minimum_size = Vector2(20, 3)
+	hp_bar.size = Vector2(20, 3)
+	hp_bar.position = Vector2(-10, -14)
+	hp_bar.add_theme_stylebox_override("fill", _make_hp_fill())
+	hp_bar.add_theme_stylebox_override("background", _make_hp_bg())
+	add_child(hp_bar)
+
+
+func _make_hp_fill() -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.9, 0.15, 0.15)
+	sb.corner_radius_top_left = 1
+	sb.corner_radius_top_right = 1
+	sb.corner_radius_bottom_left = 1
+	sb.corner_radius_bottom_right = 1
+	return sb
+
+
+func _make_hp_bg() -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.15, 0.15, 0.15, 0.8)
+	sb.corner_radius_top_left = 1
+	sb.corner_radius_top_right = 1
+	sb.corner_radius_bottom_left = 1
+	sb.corner_radius_bottom_right = 1
+	return sb
 
 
 func _physics_process(delta: float) -> void:
@@ -115,6 +159,11 @@ func _ai_patrol(_delta: float) -> void:
 	if target:
 		ai_state = AIState.CHASE
 		return
+	# Stationary enemies don't patrol
+	if move_speed <= 0.0:
+		ai_state = AIState.IDLE
+		patrol_timer = randf_range(2.0, 4.0)
+		return
 	var dir := (patrol_target - global_position)
 	if dir.length() < 4.0:
 		ai_state = AIState.IDLE
@@ -138,7 +187,10 @@ func _ai_chase(_delta: float) -> void:
 	if dist <= attack_range:
 		ai_state = AIState.ATTACK
 		return
-	velocity = (target.global_position - global_position).normalized() * move_speed
+	# Stationary enemies (Anemone) don't chase, just wait for targets in range
+	if move_speed <= 0.0:
+		return
+	velocity = (target.global_position - global_position).normalized() * move_speed * enrage_speed_mult
 	sprite.flip_h = target.global_position.x < global_position.x
 	move_and_slide()
 
@@ -174,6 +226,7 @@ func _configure_stats() -> void:
 			max_hp = 55; damage = 10; move_speed = 38.0; defense = 4; xp_reward = 18
 		EnemyType.LOBSTER_WARLORD:
 			max_hp = 90; damage = 15; move_speed = 35.0; defense = 6; xp_reward = 35
+			is_boss = true
 		EnemyType.EEL_SCOUT:
 			max_hp = 22; damage = 8; move_speed = 75.0; attack_range = 16.0; xp_reward = 10
 		EnemyType.ANGLERFISH:
@@ -185,16 +238,19 @@ func _configure_stats() -> void:
 		EnemyType.URCHIN_ROLLER:
 			max_hp = 35; damage = 9; move_speed = 55.0; xp_reward = 12
 		EnemyType.ANEMONE_TRAP:
-			max_hp = 45; damage = 12; move_speed = 0.0; aggro_range = 48.0; xp_reward = 14
+			max_hp = 45; damage = 12; move_speed = 0.0; aggro_range = 48.0; attack_range = 40.0; xp_reward = 14
 		EnemyType.CRAB_WARLORD:   # Zone 2 boss
 			max_hp = 320; damage = 25; move_speed = 42.0; defense = 8
 			attack_cooldown_max = 0.8; loot_table_weight = 5; xp_reward = 150
+			is_boss = true
 		EnemyType.THE_LEVIATHAN:  # Zone 3 boss
 			max_hp = 600; damage = 35; move_speed = 50.0; defense = 12
 			attack_cooldown_max = 1.0; loot_table_weight = 8; xp_reward = 300
+			is_boss = true
 		EnemyType.THE_DROWNED_GOD: # Final boss
 			max_hp = 1200; damage = 45; move_speed = 40.0; defense = 15
 			attack_cooldown_max = 1.2; loot_table_weight = 10; xp_reward = 999
+			is_boss = true
 
 
 func _pick_patrol_point() -> void:
@@ -210,9 +266,25 @@ func _do_attack() -> void:
 	if not multiplayer.is_server():
 		return
 	attack_cooldown = attack_cooldown_max
+	# Play attack animation
+	_play_attack_anim()
+	# Deal damage to target — re-check distance to prevent phantom hits
+	if target and is_instance_valid(target):
+		var dist := global_position.distance_to((target as Node2D).global_position)
+		if dist <= attack_range * 1.5 and target.has_method("take_damage"):
+			target.take_damage(damage, self)
+
+
+func _play_attack_anim() -> void:
 	sprite.play("attack")
-	if target and is_instance_valid(target) and target.has_method("take_damage"):
-		target.take_damage.rpc_id(target.get_multiplayer_authority(), damage)
+	sprite.modulate = Color(1.0, 0.5, 0.3)
+	var tween := create_tween()
+	tween.tween_interval(0.2)
+	tween.tween_callback(func():
+		if sprite:
+			sprite.modulate = Color.WHITE
+	)
+
 
 
 func take_damage(amount: int) -> void:
@@ -221,14 +293,56 @@ func take_damage(amount: int) -> void:
 	if ai_state == AIState.DEAD:
 		return
 	current_hp -= amount
+	if hp_bar:
+		hp_bar.value = current_hp
 	_sync_hp.rpc(current_hp)
+	var is_big_hit := amount > max_hp * 0.15  # Show big hits differently
+	_broadcast_damage_number.rpc(amount, is_big_hit)
 
 	# Aggro: start chasing whoever hit us
 	if ai_state == AIState.IDLE or ai_state == AIState.PATROL:
 		ai_state = AIState.CHASE
 
+	# Jellyfish flees when low HP
+	if enemy_type == EnemyType.JELLYFISH_DRIFTER and float(current_hp) / float(max_hp) < 0.3:
+		ai_state = AIState.FLEEING
+		patrol_timer = 4.0
+
+	# Boss phase transitions
+	if is_boss:
+		_check_boss_phase()
+
 	if current_hp <= 0:
 		_die()
+
+
+func _check_boss_phase() -> void:
+	var hp_ratio := float(current_hp) / float(max_hp)
+	if boss_phase == 1 and hp_ratio <= 0.5:
+		boss_phase = 2
+		# Phase 2: faster attacks, increased damage
+		attack_cooldown_max *= 0.7
+		damage = int(damage * 1.3)
+		move_speed *= 1.2
+		_broadcast_boss_phase.rpc(2)
+	elif boss_phase == 2 and hp_ratio <= 0.25:
+		boss_phase = 3
+		# Phase 3: enrage — much faster, more damage
+		attack_cooldown_max *= 0.6
+		damage = int(damage * 1.4)
+		move_speed *= 1.3
+		enrage_speed_mult = 1.5
+		_broadcast_boss_phase.rpc(3)
+
+
+@rpc("authority", "call_local", "reliable")
+func _broadcast_boss_phase(phase: int) -> void:
+	boss_phase = phase
+	match phase:
+		2:
+			sprite.modulate = Color(1.0, 0.7, 0.3)  # Orange tint
+		3:
+			sprite.modulate = Color(1.0, 0.2, 0.2)  # Red enrage
 
 
 func _die() -> void:
@@ -260,18 +374,69 @@ func _sync_state(pos: Vector2, state: int, flip: bool) -> void:
 @rpc("authority", "reliable")
 func _sync_hp(hp: int) -> void:
 	current_hp = hp
-	# Flash red on hit
+	if hp_bar:
+		hp_bar.value = current_hp
+	# Flash red on hit, then restore to phase tint (not always white)
+	var restore_color := Color.WHITE
+	if is_boss:
+		match boss_phase:
+			2: restore_color = Color(1.0, 0.7, 0.3)
+			3: restore_color = Color(1.0, 0.2, 0.2)
 	sprite.modulate = Color(1.0, 0.3, 0.3)
 	await get_tree().create_timer(0.15).timeout
 	if sprite:
-		sprite.modulate = Color.WHITE
+		sprite.modulate = restore_color
 
 
 @rpc("authority", "reliable")
 func _sync_death() -> void:
 	ai_state = AIState.DEAD
 	sprite.play("death")
-	set_physics_process(false)
+	_spawn_death_particles()
+
+
+func _spawn_death_particles() -> void:
+	# Burst of small colored squares on death
+	for i in 6:
+		var particle := ColorRect.new()
+		particle.size = Vector2(2, 2)
+		particle.color = Color(0.8, 0.2 + randf() * 0.3, 0.1, 1.0)
+		particle.position = Vector2(randf_range(-4, 4), randf_range(-4, 4))
+		particle.z_index = 8
+		add_child(particle)
+		var tween := create_tween()
+		var target_pos := particle.position + Vector2(randf_range(-12, 12), randf_range(-14, -4))
+		tween.set_parallel(true)
+		tween.tween_property(particle, "position", target_pos, 0.4)
+		tween.tween_property(particle, "modulate:a", 0.0, 0.4).set_delay(0.15)
+		tween.set_parallel(false)
+		tween.tween_callback(particle.queue_free)
+
+
+@rpc("authority", "call_local", "reliable")
+func _broadcast_damage_number(amount: int, is_big_hit: bool = false) -> void:
+	var lbl := Label.new()
+	if is_big_hit:
+		lbl.text = str(amount) + "!"
+		lbl.add_theme_font_size_override("font_size", 10)
+		lbl.add_theme_color_override("font_color", Color(1.0, 0.6, 0.1))
+	else:
+		lbl.text = str(amount)
+		lbl.add_theme_font_size_override("font_size", 7)
+		lbl.add_theme_color_override("font_color", Color(1.0, 1.0, 0.4))
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.position = Vector2(-6 + randf_range(-4, 4), -18)
+	lbl.z_index = 10
+	add_child(lbl)
+	var tween := create_tween()
+	var float_dist := -18.0 if is_big_hit else -14.0
+	tween.set_parallel(true)
+	tween.tween_property(lbl, "position:y", lbl.position.y + float_dist, 0.6)
+	tween.tween_property(lbl, "modulate:a", 0.0, 0.6).set_delay(0.25)
+	if is_big_hit:
+		tween.tween_property(lbl, "scale", Vector2(1.3, 1.3), 0.1)
+	tween.set_parallel(false)
+	tween.tween_callback(lbl.queue_free)
 
 
 # -------------------------------------------------------

@@ -1,15 +1,15 @@
 extends "../Player.gd"
-# Little Blue Penguin — The Third Sibling
-# Support/Balanced archetype. The peacekeeper.
-# Balanced stats, heals allies, buffs party. Snaps exactly once.
-# When they snap: berserker mode, doubled damage, frightening.
+# Little Blue Penguin — Lead Vocalist
+# The peacekeeper. Mic stand as weapon, voice as power.
+# Balanced stats, heals allies with Power Ballads, buffs party.
+# When they snap: Death Metal mode — doubled damage, terrifying screams.
 
 const CLASS_INDEX := ItemDatabase.PlayerClass.LITTLE_BLUE
 
-var heal_pulse_cooldown: float = 0.0
-const HEAL_PULSE_COOLDOWN_MAX := 8.0
-const HEAL_PULSE_AMOUNT := 25
-const HEAL_PULSE_RADIUS := 80.0
+var ballad_cooldown: float = 0.0
+const BALLAD_COOLDOWN_MAX := 8.0
+const BALLAD_HEAL_AMOUNT := 25
+const BALLAD_RADIUS := 80.0
 
 var has_snapped: bool = false
 var snap_timer: float = 0.0
@@ -42,67 +42,82 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	super._physics_process(delta)
-	if heal_pulse_cooldown > 0:
-		heal_pulse_cooldown -= delta
+	if ballad_cooldown > 0:
+		ballad_cooldown -= delta
 	if snap_timer > 0:
 		snap_timer -= delta
 		if snap_timer <= 0:
 			_end_snap()
 
 
-# Override: Primary = attack (or snap attack if snapped)
+# Primary: Mic stand swing
 func _use_primary_ability() -> void:
 	attack()
 
 
-# Override: Secondary = Heal Pulse — AoE heal to nearby allies
-# But if HP < 20%, triggers "The Snap" instead
+# Secondary: Power Ballad — AoE heal to nearby allies
+# But if HP < 20%, triggers "Death Metal" instead
 func _use_secondary_ability() -> void:
 	if current_hp < int(max_hp * 0.2) and not has_snapped:
-		_trigger_snap()
+		_trigger_death_metal()
 		return
 
-	if heal_pulse_cooldown > 0:
+	if ballad_cooldown > 0:
 		return
-	heal_pulse_cooldown = HEAL_PULSE_COOLDOWN_MAX
-	_request_heal_pulse.rpc_id(1, global_position)
+	ballad_cooldown = BALLAD_COOLDOWN_MAX
+	AudioManager.play_sfx("power_ballad")
+	if multiplayer.is_server():
+		_request_power_ballad(global_position)
+	else:
+		_request_power_ballad.rpc_id(1, global_position)
 
 
 @rpc("any_peer", "reliable")
-func _request_heal_pulse(origin: Vector2) -> void:
+func _request_power_ballad(origin: Vector2) -> void:
 	if not multiplayer.is_server():
 		return
-	_broadcast_heal_pulse.rpc(origin, HEAL_PULSE_AMOUNT)
+	for player in get_tree().get_nodes_in_group("players"):
+		if origin.distance_to((player as Node2D).global_position) <= BALLAD_RADIUS:
+			player.heal.rpc(BALLAD_HEAL_AMOUNT)
+	_broadcast_power_ballad.rpc(origin, BALLAD_HEAL_AMOUNT)
 
 
-@rpc("authority", "reliable")
-func _broadcast_heal_pulse(_origin: Vector2, amount: int) -> void:
-	# Game scene finds all players within radius and calls heal()
-	pass
+@rpc("authority", "call_local", "reliable")
+func _broadcast_power_ballad(_origin: Vector2, _amount: int) -> void:
+	# Visual: green healing pulse ring
+	sprite.modulate = Color(0.4, 1.0, 0.5)
+	await get_tree().create_timer(0.3).timeout
+	if sprite:
+		sprite.modulate = Color.WHITE
 
 
-# "The Snap" — triggered when near death
-# Little Blue stops being nice. Just for a moment.
-func _trigger_snap() -> void:
+# "Death Metal" — triggered when near death
+# Little Blue stops singing clean. Switches to screamo.
+func _trigger_death_metal() -> void:
 	has_snapped = true
 	snap_timer = SNAP_DURATION
+	AudioManager.play_sfx("death_metal")
 	sprite.modulate = Color(0.7, 0.0, 0.0)
-	# Temporary stat override
+	# Temporary stat override — pure aggression
 	crit_chance = 0.40
 	crit_multiplier = 3.0
 	speed_multiplier *= 1.3
-	_announce_snap.rpc()
+	_announce_death_metal.rpc()
 
 
 @rpc("authority", "call_local")
-func _announce_snap() -> void:
-	# UI shows dramatic message: "..."
-	pass
+func _announce_death_metal() -> void:
+	if not is_local_player:
+		return
+	var game := get_tree().get_first_node_in_group("game_scene")
+	if game:
+		var hud_node = game.get_node_or_null("HUDLayer/HUD")
+		if hud_node and hud_node.has_method("show_message"):
+			hud_node.show_message("DEATH METAL", 2.0)
 
 
 func _end_snap() -> void:
 	sprite.modulate = Color.WHITE
-	# Restore stats (reset to base — in a full implementation, recalculate from equipment)
 	crit_chance = 0.08
 	crit_multiplier = 1.5
 	speed_multiplier = 1.1

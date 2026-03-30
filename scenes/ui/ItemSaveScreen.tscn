@@ -1,0 +1,79 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/ItemSaveScreen.gd" id="1_save"]
+
+[node name="ItemSaveScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_save")
+
+[node name="Panel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 10.0
+offset_right = -20.0
+offset_bottom = -10.0
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+text = "Expedition Complete"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 12
+
+[node name="Stats" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+text = ""
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+[node name="Sep" type="HSeparator" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+text = "Choose 1 item to save permanently:"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 7
+
+[node name="ScrollContainer" type="ScrollContainer" parent="Panel/VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 120)
+
+[node name="ItemGrid" type="GridContainer" parent="Panel/VBox/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 4
+
+[node name="DescLabel" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+text = "Select an item above"
+horizontal_alignment = 1
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 7
+custom_minimum_size = Vector2(0, 40)
+
+[node name="HBox" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+alignment = 1
+
+[node name="SaveButton" type="Button" parent="Panel/VBox"]
+layout_mode = 2
+text = "Save Item & Return"
+custom_minimum_size = Vector2(0, 16)
+theme_override_font_sizes/font_size = 8
+
+[node name="SkipButton" type="Button" parent="Panel/VBox"]
+layout_mode = 2
+text = "Skip — Return Empty-Handed"
+custom_minimum_size = Vector2(0, 14)
+theme_override_font_sizes/font_size = 7

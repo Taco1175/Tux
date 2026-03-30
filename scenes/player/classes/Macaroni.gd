@@ -1,21 +1,22 @@
 extends "../Player.gd"
-# Macaroni Penguin — The Youngest Sibling
-# Mage archetype. Treated like a baby. Unnerving calm.
-# Glass cannon — devastating AoE, dies in two hits.
-# Accidentally the most powerful one there.
+# Macaroni Penguin — Bassist
+# The youngest sibling. Unnerving calm. Treated like a baby.
+# Bass guitar channels sonic devastation. Glass cannon.
+# Primary: Sound Wave bolt. Secondary: Bass Drop AoE.
+# Passive: "Low End Theory" — lower HP = more damage.
 
 const CLASS_INDEX := ItemDatabase.PlayerClass.MACARONI
 
-var fireball_cooldown: float = 0.0
-const FIREBALL_COOLDOWN_MAX := 2.5
-const FIREBALL_MANA_COST := 20
-const FIREBALL_BASE_DAMAGE := 35
-const FIREBALL_RADIUS := 40.0
+var bass_drop_cooldown: float = 0.0
+const BASS_DROP_COOLDOWN_MAX := 2.5
+const BASS_DROP_MANA_COST := 20
+const BASS_DROP_BASE_DAMAGE := 35
+const BASS_DROP_RADIUS := 40.0
 
 # Passive: spell affixes trigger 50% more often (applied in ItemGenerator)
 const SPELL_AFFIX_BONUS := 0.5
 
-# The "Unnerving Calm" passive: the lower HP, the higher spell damage
+# "Low End Theory" passive: the lower HP, the higher the damage
 var calm_multiplier: float = 1.0
 
 
@@ -44,65 +45,75 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	super._physics_process(delta)
-	if fireball_cooldown > 0:
-		fireball_cooldown -= delta
+	if bass_drop_cooldown > 0:
+		bass_drop_cooldown -= delta
 	_update_calm_multiplier()
 
 
 func _update_calm_multiplier() -> void:
-	# "Unnerving calm" — lower HP = higher damage. Macaroni doesn't flinch.
+	# "Low End Theory" — lower HP = higher damage. Macaroni doesn't flinch.
 	var hp_ratio := float(current_hp) / float(max_hp)
-	# At full HP: 1.0x. At 10% HP: 2.5x. Linear.
 	calm_multiplier = lerp(2.5, 1.0, hp_ratio)
 
 
-# Override: Primary = Ice Staff melee / basic spell bolt
+# Primary: Sound Wave — ranged sonic bolt from the bass guitar
 func _use_primary_ability() -> void:
 	if current_mana >= 5:
 		current_mana -= 5
 		mana_changed.emit(current_mana, max_mana)
-		_request_spell_bolt.rpc_id(1, global_position, sprite.flip_h)
+		var aim_dir := _get_aim_direction()
+		if multiplayer.is_server():
+			_request_sound_wave(global_position, aim_dir)
+		else:
+			_request_sound_wave.rpc_id(1, global_position, aim_dir)
 	else:
-		attack()  # Fallback to melee, deeply embarrassing for everyone
+		attack()  # Fallback to melee — swinging the bass like a bat
 
 
 @rpc("any_peer", "reliable")
-func _request_spell_bolt(origin: Vector2, facing_left: bool) -> void:
+func _request_sound_wave(origin: Vector2, direction: Vector2) -> void:
 	if not multiplayer.is_server():
 		return
 	var damage := int((intelligence + randi_range(8, 15)) * calm_multiplier)
-	var direction := Vector2.LEFT if facing_left else Vector2.RIGHT
-	_broadcast_spell_bolt.rpc(origin, direction, damage)
+	_broadcast_sound_wave.rpc(origin, direction.normalized(), damage)
 
 
-@rpc("authority", "reliable")
-func _broadcast_spell_bolt(_origin: Vector2, _direction: Vector2, _damage: int) -> void:
-	pass  # Game scene spawns projectile
+@rpc("authority", "call_local", "reliable")
+func _broadcast_sound_wave(origin: Vector2, direction: Vector2, damage: int) -> void:
+	var game := get_tree().get_first_node_in_group("game_scene")
+	if game:
+		game.spawn_projectile(origin, direction, 200.0, damage, 160.0, 0.0)
 
 
-# Override: Secondary = Fireball — AoE ice/fire explosion
+# Secondary: Bass Drop — AoE sonic explosion at target location
 func _use_secondary_ability() -> void:
-	if fireball_cooldown > 0 or current_mana < FIREBALL_MANA_COST:
+	if bass_drop_cooldown > 0 or current_mana < BASS_DROP_MANA_COST:
 		return
-	fireball_cooldown = FIREBALL_COOLDOWN_MAX
-	current_mana -= FIREBALL_MANA_COST
+	bass_drop_cooldown = BASS_DROP_COOLDOWN_MAX
+	AudioManager.play_sfx("bass_drop")
+	current_mana -= BASS_DROP_MANA_COST
 	mana_changed.emit(current_mana, max_mana)
 
 	var mouse_pos := get_global_mouse_position() if is_local_player else global_position
-	_request_fireball.rpc_id(1, global_position, mouse_pos)
+	if multiplayer.is_server():
+		_request_bass_drop(global_position, mouse_pos)
+	else:
+		_request_bass_drop.rpc_id(1, global_position, mouse_pos)
 
 
 @rpc("any_peer", "reliable")
-func _request_fireball(origin: Vector2, target: Vector2) -> void:
+func _request_bass_drop(origin: Vector2, target: Vector2) -> void:
 	if not multiplayer.is_server():
 		return
-	var damage := int((FIREBALL_BASE_DAMAGE + intelligence) * calm_multiplier)
-	_broadcast_fireball.rpc(origin, target, damage, FIREBALL_RADIUS)
+	var damage := int((BASS_DROP_BASE_DAMAGE + intelligence) * calm_multiplier)
+	_broadcast_bass_drop.rpc(origin, target, damage, BASS_DROP_RADIUS)
 
 
-@rpc("authority", "reliable")
-func _broadcast_fireball(_origin: Vector2, _target: Vector2, _damage: int, _radius: float) -> void:
-	pass  # Game scene spawns AoE explosion
+@rpc("authority", "call_local", "reliable")
+func _broadcast_bass_drop(origin: Vector2, target: Vector2, damage: int, radius: float) -> void:
+	var game := get_tree().get_first_node_in_group("game_scene")
+	if game:
+		game.spawn_fireball(origin, target, damage, radius)
 
 
 func get_loot_class_bias() -> int:
