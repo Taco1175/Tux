@@ -91,6 +91,8 @@ class RunData:
 	var run_currency: int = 0          # "tide tokens" — spent in unlock shop
 	var selected_classes: Array[int] = []
 	var players_alive: Array[int] = [] # peer IDs still in the run
+	var enemies_killed: int = 0
 	var colony_secret_known: bool = false  # true once the mural is found in zone 2
 	var parents_found: bool = false        # true once players reach the sanctum
 	var sibling_sacrificed_peer: int = -1  # peer ID if Path B chosen
+	var collected_items: Array = []       # inventory snapshot for item save screen

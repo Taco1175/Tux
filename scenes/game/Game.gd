@@ -6,6 +6,7 @@ extends Node2D
 const BSPGenerator  = preload("res://scripts/utils/BSPGenerator.gd")
 const ItemGenerator = preload("res://scenes/items/ItemGenerator.gd")
 const EnemyScript   = preload("res://scenes/enemies/Enemy.gd")
+const SpriteFramesBuilder = preload("res://scenes/player/SpriteFramesBuilder.gd")
 
 const PlayerScripts := {
 	ItemDatabase.PlayerClass.EMPEROR:    preload("res://scenes/player/classes/Emperor.gd"),
@@ -22,7 +23,7 @@ const ItemScene      := preload("res://scenes/items/Item.tscn")
 @onready var players_node: Node2D  = $Players
 @onready var enemies_node: Node2D  = $Enemies
 @onready var items_node: Node2D    = $Items
-@onready var hud: Control          = $HUD
+@onready var hud: Control          = $HUDLayer/HUD
 @onready var camera: Camera2D      = $Camera2D
 
 const TILE_SIZE := 16
@@ -41,6 +42,7 @@ var _stairs_triggered: bool = false
 func _ready() -> void:
 	add_to_group("game_scene")
 	_setup_tileset()
+	AudioManager.play_track("dungeon")
 
 	if multiplayer.is_server():
 		_generate_floor()
@@ -99,10 +101,15 @@ func _setup_tileset() -> void:
 			td.set_collision_polygon_points(0, 0, wall_polygon)
 
 
+var minimap_texture: TextureRect = null
+var minimap_image: Image = null
+var minimap_player_marker: ColorRect = null
+
 func _process(_delta: float) -> void:
 	# Camera follows the local player
 	if local_player and is_instance_valid(local_player):
 		camera.global_position = local_player.global_position
+		_update_minimap_marker()
 
 	# Server checks if a player has reached the stairs
 	if multiplayer.is_server() and dungeon_data and not _stairs_triggered:
@@ -124,6 +131,7 @@ func _generate_floor() -> void:
 	dungeon_data = BSPGenerator.generate(run.floor_number, run.run_seed)
 	_broadcast_floor.rpc(run.floor_number, run.run_seed)
 	_build_tilemap()
+	_create_minimap()
 	_spawn_enemies()
 	_spawn_floor_items()
 	_spawn_chests()
@@ -132,11 +140,12 @@ func _generate_floor() -> void:
 
 
 @rpc("authority", "reliable")
-func _broadcast_floor(floor_number: int, seed: int) -> void:
+func _broadcast_floor(floor_number: int, floor_seed: int) -> void:
 	if multiplayer.is_server():
 		return
-	dungeon_data = BSPGenerator.generate(floor_number, seed)
+	dungeon_data = BSPGenerator.generate(floor_number, floor_seed)
 	_build_tilemap()
+	_create_minimap()
 
 
 func _build_tilemap() -> void:
@@ -175,6 +184,61 @@ func _tile_type_to_atlas(tile_type: int, theme: int) -> Vector2i:
 
 
 # -------------------------------------------------------
+# Minimap (top-right corner, pixel-per-tile)
+# -------------------------------------------------------
+func _create_minimap() -> void:
+	if not dungeon_data or not hud:
+		return
+	# Remove old minimap
+	if minimap_texture and is_instance_valid(minimap_texture):
+		minimap_texture.queue_free()
+	if minimap_player_marker and is_instance_valid(minimap_player_marker):
+		minimap_player_marker.queue_free()
+
+	var w: int = BSPGenerator.MAP_WIDTH
+	var h: int = BSPGenerator.MAP_HEIGHT
+	minimap_image = Image.create(w, h, false, Image.FORMAT_RGBA8)
+	minimap_image.fill(Color(0, 0, 0, 0.6))
+
+	for y in h:
+		for x in w:
+			var tile: int = dungeon_data.tiles[y][x]
+			match tile:
+				BSPGenerator.TileType.WALL:
+					minimap_image.set_pixel(x, y, Color(0.25, 0.25, 0.35, 0.8))
+				BSPGenerator.TileType.FLOOR, BSPGenerator.TileType.SPAWN, BSPGenerator.TileType.DOOR:
+					minimap_image.set_pixel(x, y, Color(0.45, 0.45, 0.55, 0.7))
+				BSPGenerator.TileType.STAIRS_DOWN:
+					minimap_image.set_pixel(x, y, Color(0.2, 0.8, 0.2, 1.0))
+				BSPGenerator.TileType.CHEST:
+					minimap_image.set_pixel(x, y, Color(0.9, 0.75, 0.1, 1.0))
+				BSPGenerator.TileType.SECRET_WALL:
+					minimap_image.set_pixel(x, y, Color(0.25, 0.25, 0.35, 0.8))
+
+	minimap_texture = TextureRect.new()
+	minimap_texture.texture = ImageTexture.create_from_image(minimap_image)
+	minimap_texture.stretch_mode = TextureRect.STRETCH_KEEP
+	minimap_texture.position = Vector2(480 - w - 4, 30)
+	minimap_texture.z_index = 5
+	hud.add_child(minimap_texture)
+
+	# Player marker
+	minimap_player_marker = ColorRect.new()
+	minimap_player_marker.size = Vector2(2, 2)
+	minimap_player_marker.color = Color(1.0, 1.0, 1.0)
+	minimap_player_marker.z_index = 6
+	hud.add_child(minimap_player_marker)
+
+
+func _update_minimap_marker() -> void:
+	if not minimap_player_marker or not minimap_texture or not local_player:
+		return
+	var tile_x := int(local_player.global_position.x / TILE_SIZE)
+	var tile_y := int(local_player.global_position.y / TILE_SIZE)
+	minimap_player_marker.position = minimap_texture.position + Vector2(tile_x - 1, tile_y - 1)
+
+
+# -------------------------------------------------------
 # Player spawning
 # -------------------------------------------------------
 func _spawn_all_players() -> void:
@@ -188,6 +252,9 @@ func _spawn_player(peer_id: int, chosen_class: int) -> void:
 	var player := PlayerScene.instantiate()
 	player.set_multiplayer_authority(peer_id)
 	player.set_script(PlayerScripts[chosen_class])
+	# Pre-build sprite frames before entering tree
+	var anim: AnimatedSprite2D = player.get_node("AnimatedSprite2D")
+	anim.sprite_frames = SpriteFramesBuilder.build_frames_for_class(chosen_class)
 	var spawn_world_pos := Vector2(dungeon_data.spawn_position) * TILE_SIZE
 	player.global_position = spawn_world_pos + Vector2(randi_range(-8, 8), randi_range(-8, 8))
 	player.name = "Player_%d" % peer_id
@@ -249,6 +316,9 @@ func _on_enemy_died(enemy: Node, pos: Vector2) -> void:
 	if not multiplayer.is_server():
 		return
 
+	if GameManager.current_run:
+		GameManager.current_run.enemies_killed += 1
+
 	# Award XP to all living players
 	var xp: int = enemy.xp_reward
 	_broadcast_xp.rpc(xp)
@@ -256,26 +326,28 @@ func _on_enemy_died(enemy: Node, pos: Vector2) -> void:
 	# Drop loot
 	var run := GameManager.current_run
 	var drop_roll := randf()
-	if drop_roll < 0.6:  # 60% chance to drop something
+	if drop_roll < 0.15:  # 15% chance to drop something
 		var bias := _get_nearest_player_class(pos)
 		var item_data := ItemGenerator.generate_for_class(
 			run.floor_number if run else 0, bias
 		)
 		_spawn_item_drop(pos, item_data)
 
-	# Tide Tokens (run currency)
-	var tokens := randi_range(1, 3 + (run.floor_number if run else 0))
+	# Tide Tokens (run currency) — apply gold_find bonus from nearest player
+	var base_tokens: int = randi_range(1, 3 + (run.floor_number if run else 0))
+	var gold_bonus: float = _get_nearest_player_gold_find(pos)
+	var tokens: int = int(base_tokens * (1.0 + gold_bonus))
 	_award_tokens.rpc(tokens)
 
 
 func _spawn_floor_items() -> void:
 	for spawn_data in dungeon_data.item_spawns:
-		var item_data := ItemGenerator.generate(GameManager.current_run.floor_number if GameManager.current_run else 0)
+		var item_data: Dictionary = ItemGenerator.generate(GameManager.current_run.floor_number if GameManager.current_run else 0)
 		_spawn_item_drop(Vector2(spawn_data["position"]) * TILE_SIZE, item_data)
 
 
 func _spawn_chests() -> void:
-	var floor_num := GameManager.current_run.floor_number if GameManager.current_run else 0
+	var floor_num: int = GameManager.current_run.floor_number if GameManager.current_run else 0
 	for pos in dungeon_data.chest_positions:
 		# Chests guarantee better loot — pass floor+2 to shift rarity weights up
 		var item_data := ItemGenerator.generate(floor_num + 2)
@@ -439,6 +511,17 @@ func _spawn_item_drop(pos: Vector2, item_data: Dictionary) -> void:
 	items_node.add_child(item_node, true)
 
 
+func _get_nearest_player_gold_find(pos: Vector2) -> float:
+	var closest_bonus := 0.0
+	var closest_dist := INF
+	for player in players_node.get_children():
+		var dist := pos.distance_to(player.global_position)
+		if dist < closest_dist:
+			closest_dist = dist
+			closest_bonus = player.gold_find if player.get("gold_find") != null else 0.0
+	return closest_bonus
+
+
 func _get_nearest_player_class(pos: Vector2) -> int:
 	var closest_class := -1
 	var closest_dist := INF
@@ -468,11 +551,20 @@ func _award_tokens(amount: int) -> void:
 func _on_player_reached_stairs() -> void:
 	if not multiplayer.is_server():
 		return
-	# All living players must be at stairs (or a timer expires)
 	GameManager.current_run.floor_number += 1
 	_check_for_sanctum()
 	_generate_floor()
 	_reposition_players()
+	# Show floor transition message
+	var floor_name: String = hud._floor_display_name(GameManager.current_run.floor_number) if hud else "Next Floor"
+	_broadcast_floor_message.rpc(floor_name)
+
+
+@rpc("authority", "call_local", "reliable")
+func _broadcast_floor_message(floor_name: String) -> void:
+	if hud:
+		hud.show_message(floor_name, 2.0)
+		hud._update_floor_label()
 
 
 func _check_for_sanctum() -> void:
@@ -592,5 +684,8 @@ func _on_player_disconnected(peer_id: int) -> void:
 
 
 func _on_run_ended(_choice: int) -> void:
+	# Snapshot local player's inventory before scene change destroys player nodes
+	if local_player and GameManager.current_run:
+		GameManager.current_run.collected_items = local_player.inventory.duplicate(true)
 	# Show item save screen, then return to hub
 	get_tree().change_scene_to_file("res://scenes/ui/ItemSaveScreen.tscn")

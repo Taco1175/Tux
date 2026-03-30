@@ -88,7 +88,7 @@ static func _roll_weapon_type(class_bias: int) -> int:
 		cumulative += weights[wtype]
 		if roll < cumulative:
 			return wtype
-	return ItemDatabase.WeaponType.FLIPPER_BLADE
+	return ItemDatabase.WeaponType.AXE_GUITAR
 
 
 # -------------------------------------------------------

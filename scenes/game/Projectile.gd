@@ -24,6 +24,11 @@ func setup(p_damage: int, p_direction: Vector2, p_speed: float,
 	max_range = p_range
 	aoe_radius = p_aoe
 	is_server_projectile = p_is_server
+	# Give sprite a visible texture
+	if sprite and not sprite.texture:
+		var tex := PlaceholderTexture2D.new()
+		tex.size = Vector2(8, 8) if aoe_radius <= 0.0 else Vector2(12, 12)
+		sprite.texture = tex
 	# Fireball tint vs spell bolt tint
 	if sprite:
 		sprite.modulate = Color(1.0, 0.5, 0.1) if aoe_radius > 0.0 else Color(0.3, 0.7, 1.0)

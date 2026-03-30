@@ -1,114 +1,99 @@
 # TUX
 
-> *"The deep is calling."*
+> *"Play loud. Play hard. Come back alive."*
 
-TUX is a 2D 8-bit dungeon crawler roguelike with online co-op for 1–4 players. Four penguin siblings descend through corrupted ocean ruins to rescue their missing parents — and discover the sin their colony has been hiding for a hundred years.
+TUX is a 2D 8-bit dungeon crawler roguelike with online co-op for 1-4 players. Four penguin siblings form a metal band and descend into the deep venues beneath Antarctica to rescue their missing parents - and shred the Lobster Warlord who silenced every band before them.
 
-Built in **Godot 4** with GDScript.
+Built in **Godot 4.6** with GDScript.
 
 ---
 
 ## The Story
 
-The invasion came without warning.
+Antarctica. The coldest place on Earth. But underneath the ice... the music never stopped.
 
-Sea creatures — crabs, eels, jellyfish, sharks — surged from the ocean and flooded the penguin colony's surface world. Corrupted by something ancient and unseen, they moved with purpose. They took things. They took *people*.
+For generations, penguin bands have descended into the deep venues beneath the glaciers - playing for something ancient, something hungry. The last band to go down was the best. Two parents. One tour. No return.
 
-Among the missing: two colony elders. A mother and a father.
+They left behind four kids. Four siblings. Four instruments. One band name: **TUX**.
 
-Their four children — siblings, each very different, each with their own reasons — gear up and dive in after them.
+The Lobster Warlord rules the deep venues. He silenced every band that came before. He took your parents.
 
-**What they expect:** a rescue mission.
-
-**What they find:** the dungeon is full of the colony's history. Murals. Records. A cage built a century ago to hold something enormous and alive. The deeper they go, the more the story changes.
-
-**What waits at the bottom:** their parents. Alive. Kneeling before a God that has been screaming in the dark for a hundred years.
-
-And a choice none of them are ready to make.
+Now it's your turn to play.
 
 ---
 
-## The Four Siblings
+## The Band
 
-| Character | Class | Species | Personality |
+| Character | Role | Instrument | Personality |
 |---|---|---|---|
-| **Emperor** | Warrior | Emperor Penguin | The oldest. Overprotective. Secretly the most scared. High HP, shield bash, becomes a wall late-game. |
-| **Gentoo** | Rogue | Gentoo Penguin | The chaotic middle sibling. "Fine, I'll do it myself." Fastest in the party, crits brutally, dies in two hits. |
-| **Little Blue** | Support | Little Blue Penguin | The peacekeeper. Balanced. Heals allies. Snaps exactly once at low HP — and becomes something frightening. |
-| **Macaroni** | Mage | Macaroni Penguin | The youngest. Treated like a baby. Unnerving calm. Glass cannon with devastating AoE. Gets *more* powerful the lower her HP. |
+| **Emperor** | Lead Guitar | Battle Axe Guitar | The oldest. Overprotective. Heavy riffs, heavy armor. Slow but unstoppable. Secondary: Power Chord (AoE knockback). |
+| **Gentoo** | Drums | Dual Drumsticks | The chaotic middle sibling. Fastest tempo, hardest crits. Glass jaw. Secondary: Paradiddle Dash (invincible dodge). |
+| **Little Blue** | Vocals | Mic Stand | The peacekeeper. Heals with Power Ballads. Snaps into Death Metal mode at low HP - doubled damage, terrifying screams. |
+| **Macaroni** | Bass | Bass Guitar | The youngest. Unnerving calm. Bass drops = AoE devastation. Gets *louder* the lower their HP ("Low End Theory" passive). |
 
-Each sibling has a **unique passive ability**, a **primary attack**, and a **secondary skill**. Stats and level-up gains differ meaningfully — Macaroni at level 15 is not the same game as Emperor at level 15.
+Each sibling has a **unique passive ability**, a **primary attack** (instrument-themed), and a **secondary skill**. Stats scale differently - Macaroni at level 15 is not the same game as Emperor at level 15.
 
 ---
 
-## The World
+## The Venues
 
-The dungeon is **hybrid-structured**: floor-by-floor descent, but each zone is interconnected with shortcuts, locked doors, and optional paths. Find the shortcut before the long route. Or find the secret room that the long route hides.
+The dungeon is **hybrid-structured**: floor-by-floor descent through corrupted underground venues. Each zone has backstage murals with the true history of the music industry's darkest secret.
 
 | Zone | Theme | Boss |
 |---|---|---|
-| **Flooded Ruins** | Crumbling stone, rising water, crab patrols | — |
-| **Coral Crypts** | Purple coral, bioluminescent traps, stinging swarms | The Crab Warlord |
+| **Flooded Ruins** | Crumbling stone, rising water, crab patrols | - |
+| **Coral Crypts** | Bioluminescent traps, stinging swarms | The Crab Warlord |
 | **Abyssal Trench** | Crushing dark, anglerfish lures, shark ambushes | The Leviathan |
 | **The God's Sanctum** | Ancient, wrong, quiet | The Drowned God |
 
-Each zone has **lore mural rooms** — optional rooms with no enemies and one stone wall covered in history. The colony's history. The real one.
-
 ---
 
-## The Enemies
+## Features
 
-### Crustacean Knights
-Armored, methodical, high defense. They don't chase you. They herd you.
-- *Crab Grunt* — the cannon fodder
-- *Crab Knight* — armored, hits harder
-- *Lobster Warlord* — mini-boss, will not stop
+### Hades-style Hub World
+Between runs, explore the backstage hub area. Talk to NPCs, build relationships, earn gifts:
+- **Roadie Rick** - Grizzled combat mentor. Gives damage buffs and a legendary axe guitar.
+- **Melody** - Merch girl. Runs the shop, gives discounts and gold-find bonuses.
+- **DJ Scratch** - Sound engineer and lore keeper. XP buffs and secret room reveals.
+- **Mama Krill** - Band mom. Sardine rolls heal, stew boosts max HP.
+- **The Producer** - Mysterious figure who appears after deep runs. Knows too much.
 
-### Deep Sea Predators
-Fast, aggressive, built to punish mistakes.
-- *Eel Scout* — zips through corridors, strikes and retreats
-- *Anglerfish* — short aggro range, massive damage when it closes
-- *Shark Brute* — charges in a straight line, high HP
+### Borderlands-style Loot
+Every item is procedurally generated with rarity tiers, random affixes, and procedural names.
 
-### Stinging Swarms
-Ranged, status-focused, annoying in the way that costs you the run.
-- *Jellyfish Drifter* — slow, low damage, flees when hurt, poisons
-- *Urchin Roller* — rolls at you, leaves a damage trail
-- *Anemone Trap* — stationary, long range, high damage
+| Tier | Color | Affixes |
+|---|---|---|
+| Common | White | 0-1 |
+| Uncommon | Green | 1 |
+| Rare | Blue | 1-2 |
+| Epic | Purple | 2-3 |
+| Legendary | Orange | 3 + unique |
 
-### Bosses
-- **The Crab Warlord** *(Zone 2)* — monologues at length. Drops guaranteed Rare+.
-- **The Leviathan** *(Zone 3)* — multi-phase. The music changes.
-- **The Drowned God** *(Final)* — does not want to fight you. Fights anyway. In pain.
+Items drop on the ground - walk up and press **[E]** to pick up. A Borderlands-style loot card shows the item score, stats, affixes, and whether it's an upgrade over your current gear.
 
----
-
-## The Loot System
-
-Inspired by Borderlands 2. Every item is procedurally generated:
-
-**Rarity tiers:**
-| Tier | Color | Affixes | Drop rate |
-|---|---|---|---|
-| Common | White | 0–1 | ~50% |
-| Uncommon | Green | 1 | ~25% |
-| Rare | Blue | 1–2 | ~15% |
-| Epic | Purple | 2–3 | ~8% |
-| Legendary | Orange | 3 + unique | ~2% |
-
-**Item categories:** Weapons · Armor · Potions · Throwables
-
-**Affix examples:**
-- `+7 Damage`, `+15% Crit Chance`, `Tide Burn: 9 fire damage`
-- `3% Lifesteal`, `Reflect 6 damage to attackers`, `+20 Max HP`
-- `+8% Tide Token Find`, `+12% XP Gained`
-
-**Smart loot:** 70% chance a dropped item's stats favor the class that killed the enemy. The Crab Warlord drops something useful for *your* build.
+**Weapon types:** Axe Guitar, Keytar, Bass Guitar, Mic Stand, Drum Sticks
 
 **Item naming:** procedurally generated from prefix/suffix pools.
-> *"Barnacle-Encrusted Iron Sword of the Last Dive"*
-> *"The Femur of Slightly Above Average Power"*
-> *"Cursed Mackerel — Explodes. Also curses. Also smells."*
+> *"Distorted Axe Guitar of the Mosh Pit"*
+> *"Overdriven Bass Guitar of Mild Tinnitus"*
+> *"Cursed Demo Tape - Explodes into noise. Side B is worse."*
+
+### Drag-and-Drop Inventory
+Full inventory with drag-and-drop item management, equipment slots, and hotbar for consumables.
+
+### Procedural 8-Bit Metal Soundtrack
+Runtime-generated chiptune metal music using AudioStreamGenerator:
+- Square wave riffs with power chord harmonics
+- Triangle wave bass lines
+- Procedural drum patterns (kick/snare/hi-hat)
+- Different tracks for menu, hub, dungeon, and boss fights
+- Class-specific attack SFX (guitar crunch, drum hits, vocal screeches, bass thumps)
+
+### Throwable Items with Animations
+Grenades, smoke machines, and cursed demo tapes throw with parabolic arcs, landing pauses, and AoE explosions with particle bursts.
+
+### Intro Cutscene
+Cinematic intro establishing the metal band backstory with character portraits and dialogue. Plays on first launch, skippable with ESC.
 
 ---
 
@@ -118,29 +103,28 @@ There are **four paths** at the bottom of the dungeon. All four require a choice
 
 Two endings are available on your first run. The other two unlock after you've seen what the sacrifice really costs.
 
-*No spoilers beyond: there is no clean answer. The game doesn't pretend otherwise.*
-
 ---
 
 ## Multiplayer
 
-- **Online co-op, 1–4 players**
-- **Room codes** — host generates a 6-character code, share it with friends
+- **Online co-op, 1-4 players**
+- **Room codes** - host generates a 6-character code, share it with friends
 - No port forwarding required (relay server architecture)
-- Server-authoritative: the host runs game logic, clients are display layers
-- Classes are unique per player — no two siblings the same
-
-The story is designed around co-op. Siblings bicker in dialogue. The ending choice can fracture a party.
+- Server-authoritative: the host runs game logic
+- Classes are unique per player
 
 ---
 
 ## Meta-Progression
 
-Earn **Tide Tokens** during runs — awarded for kills, floor depth, and leveling. Spend them in the **Unlock Shop** between runs to:
-- Unlock Gentoo (Rogue) and Little Blue (Support)
+Earn **Tide Tokens** during runs. Spend them in the **Unlock Shop** to:
+- Unlock Gentoo (Drums) and Little Blue (Vocals)
 - Add additional Relic slots
 - Expand the loot pool with new item types
 - Unlock the two hidden ending paths
+
+### Save-1-Item Mechanic
+After each run (death or victory), save exactly one item to keep permanently. Equip saved items from the hub Vault before your next gig.
 
 ---
 
@@ -148,12 +132,12 @@ Earn **Tide Tokens** during runs — awarded for kills, floor depth, and levelin
 
 | Action | Keyboard | Mouse |
 |---|---|---|
-| Move | WASD / Arrow keys | — |
+| Move | WASD / Arrow keys | - |
 | Primary ability | Z | Left click |
 | Secondary ability | X | Right click |
-| Interact | E / Space | — |
-| Inventory | I | — |
-| Pause | Escape | — |
+| Interact / Pick up | E / Space | - |
+| Inventory | I | - |
+| Pause / Close menus | Escape | - |
 
 ---
 
@@ -161,10 +145,11 @@ Earn **Tide Tokens** during runs — awarded for kills, floor depth, and levelin
 
 | Layer | Technology |
 |---|---|
-| Engine | Godot 4.3 |
+| Engine | Godot 4.6 |
 | Language | GDScript |
 | Networking | ENet (LAN) / WebSocket relay (online) |
 | Dungeon gen | BSP room subdivision + corridor carving |
+| Audio | Procedural 8-bit via AudioStreamGenerator |
 | Sprites | Custom 8-bit pixel art (generated, placeholder) |
 | Persistence | Godot FileAccess (local save) |
 
@@ -172,12 +157,12 @@ Earn **Tide Tokens** during runs — awarded for kills, floor depth, and levelin
 
 ## Running the Project
 
-1. Install [Godot 4.3](https://godotengine.org) (free)
+1. Install [Godot 4.6](https://godotengine.org) (free)
 2. Clone this repo
 3. Open `project.godot` in Godot
 4. Hit **Play**
 
-For online multiplayer, see [`tools/relay_server.py`](tools/relay_server.py) — deployable on any $4/month VPS.
+For online multiplayer, see [`tools/relay_server.py`](tools/relay_server.py).
 
 ---
 
@@ -186,25 +171,29 @@ For online multiplayer, see [`tools/relay_server.py`](tools/relay_server.py) —
 ```
 TUX/
 ├── assets/sprites/          # 8-bit PNG sprite sheets
-│   ├── players/             # Emperor, Gentoo, Little Blue, Macaroni (64×64)
-│   ├── enemies/             # 11 enemy types (32×16 each)
-│   ├── tiles/               # 4-zone tileset (96×32)
-│   ├── items/               # Item icons
+│   ├── players/             # Emperor, Gentoo, Little Blue, Macaroni
+│   ├── enemies/             # Enemy types
+│   ├── tiles/               # Zone tilesets
 │   └── ui/                  # HUD elements
 ├── scenes/
+│   ├── intro/               # Intro cutscene
 │   ├── player/              # Player base + 4 class scripts
+│   │   └── classes/         # Emperor, Gentoo, LittleBlue, Macaroni
 │   ├── enemies/             # Enemy base + AI
 │   ├── items/               # Item drop + generator + affix pool
-│   ├── game/                # Main game scene + orchestration
-│   ├── lobby/               # Multiplayer lobby
+│   ├── game/                # Main game scene + dungeon orchestration
+│   ├── hub/                 # Backstage hub world
+│   ├── lobby/               # Multiplayer lobby + character select
 │   ├── main_menu/           # Main menu + unlock shop
-│   └── ui/                  # HUD, inventory
-├── scripts/globals/         # Autoloads: GameManager, NetworkManager,
-│                            # ItemDatabase, UnlockManager
-├── scripts/utils/           # BSP dungeon generator
+│   └── ui/                  # HUD, inventory, item save screen
+├── scripts/
+│   ├── globals/             # Autoloads: GameManager, NetworkManager,
+│   │                        # ItemDatabase, UnlockManager, DialogueManager,
+│   │                        # AudioManager
+│   └── utils/               # BSP dungeon generator
 └── tools/                   # Sprite generator, relay server
 ```
 
 ---
 
-*TUX is in active development. Sprite art is placeholder — contributions welcome.*
+*TUX is in active development. Sprite art is placeholder. Contributions welcome.*

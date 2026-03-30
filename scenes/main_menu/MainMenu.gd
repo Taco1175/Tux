@@ -9,6 +9,11 @@ extends Control
 @onready var shop_panel: Control   = $UI/ShopPanel
 
 func _ready() -> void:
+	# Show intro cutscene on first launch
+	if not UnlockManager.is_unlocked("intro_seen"):
+		get_tree().change_scene_to_file("res://scenes/intro/Intro.tscn")
+		return
+
 	title_label.text = "TUX"
 	token_label.text = "Tide Tokens: %d" % UnlockManager.tide_tokens
 	UnlockManager.tokens_changed.connect(func(t): token_label.text = "Tide Tokens: %d" % t)
@@ -19,6 +24,7 @@ func _ready() -> void:
 	shop_panel.hide()
 
 	GameManager.change_state(GameManager.State.MAIN_MENU)
+	AudioManager.play_track("menu")
 
 
 func _on_play() -> void:

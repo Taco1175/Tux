@@ -23,6 +23,23 @@ extends Control
 
 var player_ref: Node = null
 
+# Hotbar items (consumables bound to 1-4 keys / D-pad)
+var hotbar_items: Array = [null, null, null, null]
+
+# Ability cooldown display
+var primary_cd_bar: ProgressBar = null
+var secondary_cd_bar: ProgressBar = null
+
+# Dialogue UI
+var dialogue_panel: PanelContainer = null
+var dialogue_speaker: Label = null
+var dialogue_text: Label = null
+var dialogue_continue: Label = null
+var _dialogue_active: bool = false
+
+# Status effect icons
+var status_container: HBoxContainer = null
+
 # Ending choice texts
 const ENDING_DATA := {
 	GameManager.EndingChoice.LET_PARENTS_GO: {
@@ -46,24 +63,63 @@ const ENDING_DATA := {
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	message_box.hide()
-	ending_panel.hide()
-	game_over_panel.hide()
+	if message_box:
+		message_box.hide()
+	if ending_panel:
+		ending_panel.hide()
+	if game_over_panel:
+		game_over_panel.hide()
 	if pause_panel:
 		pause_panel.hide()
+	if inventory_ui:
+		inventory_ui.hide()
+	GameManager.run_started.connect(_on_run_started)
+	_build_ability_cooldowns()
+	_build_dialogue_ui()
+	_build_status_bar()
+	_build_hotbar_slots()
+
+
+func _on_run_started(_r) -> void:
+	_update_floor_label()
+
+
+func _process(_delta: float) -> void:
+	# Update token counter live
+	if token_label and GameManager.current_run:
+		token_label.text = "Tide Tokens: %d" % GameManager.current_run.run_currency
+	# Update ability cooldown bars
+	_update_cooldown_bars()
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("inventory_open") and player_ref:
+	# ESC closes open panels first, then pauses
+	if event.is_action_pressed("ui_cancel"):
+		if _dialogue_active:
+			_dismiss_dialogue()
+			get_viewport().set_input_as_handled()
+			return
+		if inventory_ui and inventory_ui.visible:
+			inventory_ui.hide()
+			get_viewport().set_input_as_handled()
+			return
+		_toggle_pause()
+		return
+	if _dialogue_active and event is InputEventKey and event.is_pressed():
+		_dismiss_dialogue()
+		return
+	if _dialogue_active and event is InputEventJoypadButton and event.is_pressed():
+		_dismiss_dialogue()
+		return
+	if event.is_action_pressed("inventory_open") and player_ref and inventory_ui:
 		inventory_ui.toggle(player_ref)
 	if event.is_action_pressed("pause"):
 		_toggle_pause()
-
-	if GameManager.current_run:
-		floor_label.text = _floor_display_name(GameManager.current_run.floor_number)
-		token_label.text = "Tide Tokens: %d" % GameManager.current_run.run_currency
-
-	GameManager.run_started.connect(func(_r): _update_floor_label())
+	# Hotbar 1-4 (number keys or D-pad)
+	for i in 4:
+		if event.is_action_pressed("hotbar_%d" % (i + 1)):
+			_use_hotbar_slot(i)
+			break
 
 
 func set_player(player: Node) -> void:
@@ -76,18 +132,259 @@ func set_player(player: Node) -> void:
 
 	_on_hp_changed(player.current_hp, player.max_hp)
 	_on_mana_changed(player.current_mana, player.max_mana)
-	_on_xp_changed(player.current_xp, player.xp_to_next)
-	level_label.text = "Lv.%d" % player.level
+	if xp_bar:
+		_on_xp_changed(player.current_xp, player.xp_to_next)
+	if level_label:
+		level_label.text = "Lv.%d" % player.level
+
+
+# -------------------------------------------------------
+# Ability cooldown bars (bottom-left, next to HP)
+# -------------------------------------------------------
+func _build_ability_cooldowns() -> void:
+	var cd_container := VBoxContainer.new()
+	cd_container.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	cd_container.offset_left = 4
+	cd_container.offset_bottom = -4
+	cd_container.offset_top = -22
+	cd_container.offset_right = 50
+
+	# Primary ability label + bar
+	var p_row := HBoxContainer.new()
+	var p_label := Label.new()
+	p_label.text = "LMB"
+	p_label.add_theme_font_size_override("font_size", 5)
+	p_label.custom_minimum_size = Vector2(18, 0)
+	primary_cd_bar = ProgressBar.new()
+	primary_cd_bar.custom_minimum_size = Vector2(28, 4)
+	primary_cd_bar.max_value = 1.0
+	primary_cd_bar.value = 1.0
+	primary_cd_bar.show_percentage = false
+	primary_cd_bar.modulate = Color(1.0, 0.8, 0.3)
+	p_row.add_child(p_label)
+	p_row.add_child(primary_cd_bar)
+	cd_container.add_child(p_row)
+
+	# Secondary ability label + bar
+	var s_row := HBoxContainer.new()
+	var s_label := Label.new()
+	s_label.text = "RMB"
+	s_label.add_theme_font_size_override("font_size", 5)
+	s_label.custom_minimum_size = Vector2(18, 0)
+	secondary_cd_bar = ProgressBar.new()
+	secondary_cd_bar.custom_minimum_size = Vector2(28, 4)
+	secondary_cd_bar.max_value = 1.0
+	secondary_cd_bar.value = 1.0
+	secondary_cd_bar.show_percentage = false
+	secondary_cd_bar.modulate = Color(0.3, 0.7, 1.0)
+	s_row.add_child(s_label)
+	s_row.add_child(secondary_cd_bar)
+	cd_container.add_child(s_row)
+
+	add_child(cd_container)
+
+
+func _update_cooldown_bars() -> void:
+	if not player_ref or not is_instance_valid(player_ref):
+		return
+	# Primary: base attack cooldown
+	if primary_cd_bar:
+		var cd: float = player_ref.attack_cooldown if player_ref.get("attack_cooldown") != null else 0.0
+		var max_cd: float = player_ref.attack_cooldown_max if player_ref.get("attack_cooldown_max") != null else 0.4
+		primary_cd_bar.value = 1.0 - (cd / maxf(max_cd, 0.01))
+	# Secondary: class-specific cooldown
+	if secondary_cd_bar:
+		var cd := 0.0
+		var max_cd := 1.0
+		if player_ref.get("shield_bash_cooldown") != null:  # Emperor
+			cd = player_ref.shield_bash_cooldown
+			max_cd = 4.0
+		elif player_ref.get("dash_cooldown") != null:  # Gentoo
+			cd = player_ref.dash_cooldown
+			max_cd = 3.0
+		elif player_ref.get("heal_pulse_cooldown") != null:  # LittleBlue
+			cd = player_ref.heal_pulse_cooldown
+			max_cd = 8.0
+		elif player_ref.get("fireball_cooldown") != null:  # Macaroni
+			cd = player_ref.fireball_cooldown
+			max_cd = 2.5
+		secondary_cd_bar.value = 1.0 - (cd / maxf(max_cd, 0.01))
+
+
+# -------------------------------------------------------
+# Hotbar slots (bottom center, 4 consumable slots)
+# -------------------------------------------------------
+func _build_hotbar_slots() -> void:
+	if not hotbar:
+		return
+	for child in hotbar.get_children():
+		child.queue_free()
+	for i in 4:
+		var slot := PanelContainer.new()
+		slot.custom_minimum_size = Vector2(20, 20)
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.12, 0.12, 0.15, 0.8)
+		sb.border_color = Color(0.3, 0.3, 0.35)
+		sb.set_border_width_all(1)
+		sb.set_corner_radius_all(2)
+		slot.add_theme_stylebox_override("panel", sb)
+
+		var vbox := VBoxContainer.new()
+		vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+
+		var icon := Label.new()
+		icon.name = "Icon"
+		icon.text = ""
+		icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		icon.add_theme_font_size_override("font_size", 7)
+		vbox.add_child(icon)
+
+		var key := Label.new()
+		key.text = str(i + 1)
+		key.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		key.add_theme_font_size_override("font_size", 5)
+		key.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+		vbox.add_child(key)
+
+		slot.add_child(vbox)
+		hotbar.add_child(slot)
+
+
+func _refresh_hotbar(_item: Dictionary = {}) -> void:
+	if not player_ref:
+		return
+	hotbar_items = [null, null, null, null]
+	var slot_idx := 0
+	for item in player_ref.inventory:
+		if slot_idx >= 4:
+			break
+		var item_dict := item as Dictionary
+		if item_dict.get("item_type") in [ItemDatabase.ItemType.POTION, ItemDatabase.ItemType.THROWABLE]:
+			hotbar_items[slot_idx] = item_dict
+			slot_idx += 1
+	# Update visual
+	for i in 4:
+		if i >= hotbar.get_child_count():
+			break
+		var slot := hotbar.get_child(i)
+		var icon: Node = slot.get_node_or_null("VBoxContainer/Icon") if slot.get_child_count() > 0 else null
+		if not icon:
+			# Try finding the label directly
+			var vbox: Node = slot.get_child(0) if slot.get_child_count() > 0 else null
+			if vbox and vbox.get_child_count() > 0:
+				icon = vbox.get_child(0)
+		if icon and icon is Label:
+			if hotbar_items[i]:
+				icon.text = hotbar_items[i].get("display_name", "?")[0]
+				icon.add_theme_color_override("font_color", ItemDatabase.get_rarity_color(hotbar_items[i].get("rarity", 0)))
+			else:
+				icon.text = ""
+
+
+func _use_hotbar_slot(index: int) -> void:
+	if not player_ref or not hotbar_items[index]:
+		return
+	player_ref.use_consumable(hotbar_items[index])
+	_refresh_hotbar()
+
+
+# -------------------------------------------------------
+# Dialogue popup (Hades-style NPC conversation)
+# -------------------------------------------------------
+func _build_dialogue_ui() -> void:
+	dialogue_panel = PanelContainer.new()
+	dialogue_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	dialogue_panel.offset_left = 8
+	dialogue_panel.offset_bottom = -8
+	dialogue_panel.offset_top = -75
+	dialogue_panel.offset_right = 280
+	dialogue_panel.visible = false
+	dialogue_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.05, 0.05, 0.1, 0.92)
+	sb.border_color = Color(0.3, 0.4, 0.5, 0.8)
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(3)
+	sb.set_content_margin_all(6)
+	dialogue_panel.add_theme_stylebox_override("panel", sb)
+
+	var vbox := VBoxContainer.new()
+
+	dialogue_speaker = Label.new()
+	dialogue_speaker.add_theme_font_size_override("font_size", 8)
+	dialogue_speaker.add_theme_color_override("font_color", Color(0.9, 0.8, 0.3))
+	vbox.add_child(dialogue_speaker)
+
+	dialogue_text = Label.new()
+	dialogue_text.add_theme_font_size_override("font_size", 7)
+	dialogue_text.autowrap_mode = TextServer.AUTOWRAP_WORD
+	vbox.add_child(dialogue_text)
+
+	dialogue_continue = Label.new()
+	dialogue_continue.text = "[Any key to continue]"
+	dialogue_continue.add_theme_font_size_override("font_size", 5)
+	dialogue_continue.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+	dialogue_continue.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	vbox.add_child(dialogue_continue)
+
+	dialogue_panel.add_child(vbox)
+	add_child(dialogue_panel)
+
+
+func show_dialogue(speaker: String, text: String, color: Color = Color.WHITE) -> void:
+	if not dialogue_panel:
+		return
+	dialogue_speaker.text = speaker
+	dialogue_speaker.add_theme_color_override("font_color", color)
+	dialogue_text.text = text
+	dialogue_panel.show()
+	_dialogue_active = true
+
+
+func _dismiss_dialogue() -> void:
+	if dialogue_panel:
+		dialogue_panel.hide()
+	_dialogue_active = false
+
+
+func is_dialogue_active() -> bool:
+	return _dialogue_active
+
+
+# -------------------------------------------------------
+# Status effect icons (under HP bars)
+# -------------------------------------------------------
+func _build_status_bar() -> void:
+	status_container = HBoxContainer.new()
+	status_container.position = Vector2(4, 56)
+	status_container.add_theme_constant_override("separation", 2)
+	add_child(status_container)
+
+
+func update_status_effects(effects: Array[Dictionary]) -> void:
+	if not status_container:
+		return
+	for child in status_container.get_children():
+		child.queue_free()
+	for effect in effects:
+		var icon := Label.new()
+		icon.text = effect.get("icon", "?")
+		icon.add_theme_font_size_override("font_size", 6)
+		icon.add_theme_color_override("font_color", effect.get("color", Color.WHITE))
+		icon.tooltip_text = effect.get("name", "")
+		status_container.add_child(icon)
 
 
 # -------------------------------------------------------
 # Stat updates
 # -------------------------------------------------------
 func _on_hp_changed(hp: int, max_hp: int) -> void:
+	if not hp_bar:
+		return
 	hp_bar.max_value = max_hp
 	hp_bar.value = hp
 	hp_label.text = "%d / %d" % [hp, max_hp]
-	# Flash bar red when low
 	if float(hp) / float(max_hp) < 0.25:
 		hp_bar.modulate = Color(1.0, 0.3, 0.3)
 	else:
@@ -95,40 +392,17 @@ func _on_hp_changed(hp: int, max_hp: int) -> void:
 
 
 func _on_mana_changed(mana: int, max_mana: int) -> void:
+	if not mana_bar:
+		return
 	mana_bar.max_value = max_mana
 	mana_bar.value = mana
 	mana_label.text = "%d / %d" % [mana, max_mana]
 
 
-func _refresh_hotbar(_item: Dictionary) -> void:
-	if not player_ref:
-		return
-	for child in hotbar.get_children():
-		child.queue_free()
-	# Show first 5 consumables/throwables in inventory
-	var shown := 0
-	for item in player_ref.inventory:
-		if shown >= 5:
-			break
-		var item_dict := item as Dictionary
-		if item_dict.get("item_type") in [ItemDatabase.ItemType.POTION, ItemDatabase.ItemType.THROWABLE]:
-			var slot := _make_hotbar_slot(item_dict)
-			hotbar.add_child(slot)
-			shown += 1
-
-
-func _make_hotbar_slot(item: Dictionary) -> PanelContainer:
-	var panel := PanelContainer.new()
-	var label := Label.new()
-	label.text = item.get("display_name", "?")[0]  # First letter as placeholder
-	label.add_theme_color_override("font_color", ItemDatabase.get_rarity_color(item.get("rarity", 0)))
-	panel.add_child(label)
-	panel.tooltip_text = "%s\n%s" % [item.get("display_name", "?"), item.get("desc", "")]
-	return panel
 
 
 func _update_floor_label() -> void:
-	if GameManager.current_run:
+	if GameManager.current_run and floor_label:
 		floor_label.text = _floor_display_name(GameManager.current_run.floor_number)
 
 
@@ -228,9 +502,10 @@ func show_game_over() -> void:
 	var label := game_over_panel.get_node_or_null("Label")
 	if label:
 		var run := GameManager.current_run
-		var floors := run.floor_number if run else 0
-		var tokens := run.run_currency if run else 0
-		label.text = "The deep claims another.\n\nFloors reached: %d\nTide Tokens earned: %d" % [floors, tokens]
+		var floors: int = run.floor_number if run else 0
+		var tokens: int = run.run_currency if run else 0
+		var kills: int = run.enemies_killed if run else 0
+		label.text = "The deep claims another.\n\nFloors reached: %d\nEnemies slain: %d\nTide Tokens earned: %d" % [floors, kills, tokens]
 
 
 # -------------------------------------------------------

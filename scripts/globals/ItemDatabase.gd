@@ -12,10 +12,10 @@ enum Rarity {
 	LEGENDARY   # Orange — 3 affixes + 1 unique fixed affix
 }
 
-# Weapon subtypes
-enum WeaponType { FLIPPER_BLADE, FISH_LANCE, ICE_STAFF, BONE_BOW, CLAW_DAGGERS }
+# Weapon subtypes (musical instruments)
+enum WeaponType { AXE_GUITAR, KEYTAR, BASS_GUITAR, MIC_STAND, DRUM_STICKS }
 
-# Armor subtypes
+# Armor subtypes (band gear)
 enum ArmorType { HELMET, CHESTPLATE, BOOTS, SHIELD }
 
 # Class affinities (which classes prefer which affixes)
@@ -55,98 +55,98 @@ const BASE_RARITY_WEIGHTS := {
 	Rarity.LEGENDARY:  2,
 }
 
-# Weapon base templates: { display_name, damage_min, damage_max, speed, description }
+# Weapon base templates — musical instruments as weapons
 const WEAPON_TEMPLATES := {
-	WeaponType.FLIPPER_BLADE: {
-		"name": "Flipper Blade",
+	WeaponType.AXE_GUITAR: {
+		"name": "Axe Guitar",
 		"damage_min": 8, "damage_max": 14,
 		"speed": 1.0,
-		"desc": "A blade fashioned from a hardened flipper. Disturbingly effective.",
+		"desc": "A six-string battle axe. Shreds enemies and eardrums.",
 		"classes": [PlayerClass.EMPEROR],
 	},
-	WeaponType.FISH_LANCE: {
-		"name": "Fish Lance",
+	WeaponType.KEYTAR: {
+		"name": "Keytar",
 		"damage_min": 12, "damage_max": 18,
 		"speed": 0.7,
-		"desc": "A frozen swordfish on a stick. Somehow this is a real weapon.",
+		"desc": "Part keyboard, part guitar, full weapon. Nobody respects it. Everyone fears it.",
 		"classes": [PlayerClass.EMPEROR, PlayerClass.LITTLE_BLUE],
 	},
-	WeaponType.ICE_STAFF: {
-		"name": "Ice Staff",
+	WeaponType.BASS_GUITAR: {
+		"name": "Bass Guitar",
 		"damage_min": 6, "damage_max": 22,
 		"speed": 0.8,
-		"desc": "Crackles with ancient cold. Smells faintly of regret.",
+		"desc": "The low end hits different. Literally vibrates organs.",
 		"classes": [PlayerClass.MACARONI],
 	},
-	WeaponType.BONE_BOW: {
-		"name": "Bone Bow",
+	WeaponType.MIC_STAND: {
+		"name": "Mic Stand",
 		"damage_min": 7, "damage_max": 13,
 		"speed": 1.1,
-		"desc": "Made from the skeleton of something that used to be friendly.",
-		"classes": [PlayerClass.GENTOO, PlayerClass.LITTLE_BLUE],
+		"desc": "Chrome-plated and weaponized. Swing it like you mean it.",
+		"classes": [PlayerClass.LITTLE_BLUE, PlayerClass.GENTOO],
 	},
-	WeaponType.CLAW_DAGGERS: {
-		"name": "Claw Daggers",
+	WeaponType.DRUM_STICKS: {
+		"name": "Drum Sticks",
 		"damage_min": 5, "damage_max": 10,
 		"speed": 1.6,
-		"desc": "Two daggers. One per wing. Don't ask how.",
+		"desc": "Two sticks. Impossibly fast. Every hit is a rimshot.",
 		"classes": [PlayerClass.GENTOO],
 	},
 }
 
-# Armor base templates: { display_name, defense, description }
+# Armor base templates — band gear and stage equipment
 const ARMOR_TEMPLATES := {
 	ArmorType.HELMET: {
-		"name": "Helmet",
+		"name": "Spiked Headband",
 		"defense": 3,
-		"desc": "Protects the head. Allegedly.",
+		"desc": "Part fashion, part protection. All metal.",
 	},
 	ArmorType.CHESTPLATE: {
-		"name": "Chestplate",
+		"name": "Leather Vest",
 		"defense": 7,
-		"desc": "Heavy. Smells like the sea. Always smells like the sea.",
+		"desc": "Covered in patches from bands that don't exist yet.",
 	},
 	ArmorType.BOOTS: {
-		"name": "Boots",
+		"name": "Steel-Toe Boots",
 		"defense": 2,
-		"desc": "Penguins already waddle. These make it worse, somehow.",
+		"desc": "For stomping. And moshing. And surviving mosh pits.",
 	},
 	ArmorType.SHIELD: {
-		"name": "Shield",
+		"name": "Speaker Shield",
 		"defense": 5,
-		"desc": "A round disc of barnacled iron. Someone loved this once.",
+		"desc": "A blown-out speaker cab repurposed as a shield. Still buzzes.",
 	},
 }
 
-# Potion templates
+# Potion templates — energy drinks and backstage refreshments
 const POTION_TEMPLATES := [
-	{ "name": "Herring Flask", "effect": "heal", "power": 30, "desc": "Tastes exactly like you'd expect." },
-	{ "name": "Brine Vial", "effect": "heal_over_time", "power": 10, "desc": "Slow. Effective. Deeply unpleasant." },
-	{ "name": "Rage Draught", "effect": "damage_boost", "power": 1.5, "desc": "\"Do NOT drink two of these.\" — someone who did." },
-	{ "name": "Ghost Tide", "effect": "invincibility", "power": 3.0, "desc": "Briefly makes you someone else's problem." },
-	{ "name": "Murky Potion", "effect": "random", "power": 0, "desc": "Completely unknown. The label just says 'probably fine.'" },
+	{ "name": "Energy Drink", "effect": "heal", "power": 30, "desc": "Tastes like battery acid and broken dreams. Works though." },
+	{ "name": "Throat Coat Tea", "effect": "heal_over_time", "power": 10, "desc": "Slow recovery. Every vocalist's secret weapon." },
+	{ "name": "Rage Juice", "effect": "damage_boost", "power": 1.5, "desc": "\"Do NOT drink two of these.\" -- someone who did, mid-solo." },
+	{ "name": "Ghost Note", "effect": "invincibility", "power": 3.0, "desc": "Briefly makes you someone else's problem. Like a drum fill nobody asked for." },
+	{ "name": "Mystery Rider", "effect": "random", "power": 0, "desc": "Found on the tour bus. Label says 'probably fine.'" },
 ]
 
-# Throwable templates
+# Throwable templates — pyrotechnics and stage hazards
 const THROWABLE_TEMPLATES := [
-	{ "name": "Freeze Globe", "effect": "freeze_aoe", "power": 2.0, "desc": "Throws like a dream. Lands like a nightmare." },
-	{ "name": "Ink Bomb", "effect": "blind_aoe", "power": 3.0, "desc": "Octopus origin. Do not ask the octopus." },
-	{ "name": "Barnacle Grenade", "effect": "slow_aoe", "power": 2.5, "desc": "Sticks to everything. Even things you didn't want it to." },
-	{ "name": "Cursed Mackerel", "effect": "chaos_aoe", "power": 0, "desc": "Explodes. Also curses. Also smells. Truly the full experience." },
+	{ "name": "Freeze Pedal", "effect": "freeze_aoe", "power": 2.0, "desc": "An effects pedal rigged to explode. Lands in ice-cold feedback." },
+	{ "name": "Smoke Machine", "effect": "blind_aoe", "power": 3.0, "desc": "Portable fog. Stage presence optional." },
+	{ "name": "Feedback Grenade", "effect": "slow_aoe", "power": 2.5, "desc": "That horrible amp screech, weaponized. You're welcome." },
+	{ "name": "Cursed Demo Tape", "effect": "chaos_aoe", "power": 0, "desc": "Explodes into noise. Curses everyone nearby. Side B is worse." },
 ]
 
 # Name prefix/suffix pools for procedural item naming
 const WEAPON_PREFIXES := [
-	"Barnacle-Encrusted", "Tide-Touched", "Drowned", "Corrupted", "Blessed",
-	"Ancient", "Festering", "Glowing", "Cursed", "Whispering", "Abyssal",
-	"Frozen", "Crackling", "Hollow", "Vengeful",
+	"Distorted", "Feedback-Laced", "Shredding", "Detuned", "Overdriven",
+	"Vintage", "Thrashing", "Screaming", "Cursed", "Whispering", "Doom",
+	"Frostbitten", "Crackling", "Hollow-Body", "Vengeful",
 ]
 
 const WEAPON_SUFFIXES := [
-	"of the Deep", "of the Fallen Colony", "of Slightly Above Average Power",
-	"of the Drowned God", "of Uncertain Origin", "of the Last Dive",
-	"of the Tide", "of Forgotten Kin", "of the Leech", "of Terrible Secrets",
-	"of the Warlord", "of Mild Concern", "of the Abyss", "of Someone's Dad",
+	"of the Mosh Pit", "of the Fallen Tour", "of Slightly Above Average Volume",
+	"of the Final Encore", "of Uncertain Tuning", "of the Last Gig",
+	"of the Underground", "of Forgotten Bands", "of the Groupie", "of Terrible Solos",
+	"of the Warlord", "of Mild Tinnitus", "of the Abyss", "of Someone's Roadie",
 ]
 
 func _ready() -> void:

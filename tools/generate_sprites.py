@@ -68,112 +68,136 @@ def px(grid, palette):
             pixels.append(palette.get(ch, T))
     return pixels
 
-# ---- Penguin base shape (shared) ------------------------------------------
-# B=black  W=white  O=orange(feet)  A=accent(class colour)  .=transparent
+# ---- Penguin sprites with per-class details --------------------------------
+# B=black  W=white  O=orange(feet/beak)  E=eye  A=accent(class colour)
+# .=transparent
 
-PENGUIN_IDLE = [
-    "................",
-    "....BBBB........",
-    "...BBWWBB.......",
-    "..BBWWWWBB......",
-    "..BWWWWWWB......",
-    "..BWWWWWWB......",
-    ".BBWWWWWWBB.....",
-    ".BWWWWWWWWB.....",
-    ".BWWWWWWWWB.....",
-    ".BBBBBBBBBB.....",
-    "..BBBBBBBB......",
-    "....BB..BB......",
-    "...OOOO.OO......",
-    "...OO....OO.....",
-    "................",
-    "................",
-]
+# Each class gets custom idle, waddle frames, attack, and death sprites
+# Waddle: body tilts left/right alternately for that penguin walk feel
 
-PENGUIN_WALK_1 = [
-    "................",
-    "....BBBB........",
-    "...BBWWBB.......",
-    "..BBWWWWBB......",
-    "..BWWWWWWB......",
-    "..BWWWWWWB......",
-    ".BBWWWWWWBB.....",
-    ".BWWWWWWWWB.....",
-    ".BWWWWWWWWB.....",
-    ".BBBBBBBBBB.....",
-    "..BBBBBBBB......",
-    "...BBB..BB......",
-    "..OOO....OO.....",
-    "..OO......OO....",
-    "................",
-    "................",
-]
+def _make_class_sprites(accent_positions_idle, accent_positions_walk=None):
+    """Return (idle, walk1, walk2, attack, death) grids with accent marks."""
+    if accent_positions_walk is None:
+        accent_positions_walk = accent_positions_idle
 
-PENGUIN_WALK_2 = [
-    "................",
-    "....BBBB........",
-    "...BBWWBB.......",
-    "..BBWWWWBB......",
-    "..BWWWWWWB......",
-    "..BWWWWWWB......",
-    ".BBWWWWWWBB.....",
-    ".BWWWWWWWWB.....",
-    ".BWWWWWWWWB.....",
-    ".BBBBBBBBBB.....",
-    "..BBBBBBBB......",
-    "....BB.BBB......",
-    "...OO.OOO.......",
-    "...OO..OO.......",
-    "................",
-    "................",
-]
+    idle = [
+        "................",  # 0
+        "....BBBB........",  # 1  head top
+        "...BBAABB.......",  # 2  accent on head
+        "..BBEWWEBB......",  # 3  eyes + white face
+        "..BWWOOWWB......",  # 4  beak
+        "..BWWWWWWB......",  # 5  face bottom
+        ".BBWWWWWWBB.....",  # 6  body (flippers)
+        ".BWWWWWWWWB.....",  # 7  white belly
+        ".BWWWWWWWWB.....",  # 8  white belly
+        ".BBBBBBBBBB.....",  # 9  flipper tips
+        "..BBBBBBBB......",  # 10 body bottom
+        "....BB..BB......",  # 11 legs
+        "...OOO.OOO......",  # 12 feet
+        "................",  # 13
+        "................",  # 14
+        "................",  # 15
+    ]
 
-PENGUIN_ATTACK = [
-    "................",
-    "....BBBB........",
-    "...BBWWBB.......",
-    "..BBWWWWBB......",
-    "..BWWWWWWB......",
-    "..BWWWWWWBBBBB..",
-    ".BBWWWWWWBBBBBB.",
-    ".BWWWWWWWWBBBBB.",
-    ".BWWWWWWWWB.....",
-    ".BBBBBBBBBB.....",
-    "..BBBBBBBB......",
-    "....BB..BB......",
-    "...OOOO.OO......",
-    "...OO....OO.....",
-    "................",
-    "................",
-]
+    # Waddle left — body shifts left, right foot forward
+    walk1 = [
+        "................",
+        "...BBBB.........",
+        "..BBAABB........",
+        ".BBEWWEBB.......",
+        ".BWWOOWWB.......",
+        ".BWWWWWWB.......",
+        "BBWWWWWWBB......",
+        "BWWWWWWWWB......",
+        "BWWWWWWWWB......",
+        "BBBBBBBBBB......",
+        ".BBBBBBBB.......",
+        "...BB...BB......",
+        "..OOO..OOO......",
+        "..OO....OO......",
+        "................",
+        "................",
+    ]
 
-PENGUIN_DEATH = [
-    "................",
-    "................",
-    "................",
-    "................",
-    ".BBBB....BBBBB..",
-    ".BWWB.BB.BWWWB..",
-    ".BWWBBWWBBWWWB..",
-    ".BWWWWWWWWWWWB..",
-    ".BBBBBBBBBBBB...",
-    "..BBBBBBBBBB....",
-    "....BB....BB....",
-    "...OOOOOOOO.....",
-    "...OO....OO.....",
-    "................",
-    "................",
-    "................",
-]
+    # Waddle right — body shifts right, left foot forward
+    walk2 = [
+        "................",
+        ".....BBBB.......",
+        "....BBAABB......",
+        "...BBEWWEBB.....",
+        "...BWWOOWWB.....",
+        "...BWWWWWWB.....",
+        "..BBWWWWWWBB....",
+        "..BWWWWWWWWB....",
+        "..BWWWWWWWWB....",
+        "..BBBBBBBBBB....",
+        "...BBBBBBBB.....",
+        ".....BB..BB.....",
+        "....OOO.OOO.....",
+        ".....OO..OO.....",
+        "................",
+        "................",
+    ]
 
-def make_penguin_sheet(accent_char, accent_colour, filename):
-    """Create a 64×64 sheet: idle/walk/attack/death (4 rows × 4 frames × 16px)"""
-    palette = {"B": BK, "W": WH, "O": OR, ".": T, accent_char: accent_colour}
+    attack = [
+        "................",
+        "....BBBB........",
+        "...BBAABB.......",
+        "..BBEWWEBB......",
+        "..BWWOOWWB......",
+        "..BWWWWWWBBBBB..",
+        ".BBWWWWWWBGGGB..",
+        ".BWWWWWWWWBGGB..",
+        ".BWWWWWWWWBBB...",
+        ".BBBBBBBBBB.....",
+        "..BBBBBBBB......",
+        "....BB..BB......",
+        "...OOO.OOO......",
+        "................",
+        "................",
+        "................",
+    ]
+
+    death = [
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        ".BBBB...BBBBB...",
+        ".BEWB.BB.BWEB...",
+        ".BWWBBWWBBWWB...",
+        ".BWWWWWWWWWWB...",
+        ".BBBBBBBBBBBB...",
+        "..BBBBBBBBBB....",
+        "...OO.OO.OO.....",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]
+
+    # Apply accent positions
+    for (y, x_start, x_end) in accent_positions_idle:
+        for x in range(x_start, x_end + 1):
+            if x < 16 and idle[y][x] == 'A':
+                pass  # already A
+    # Accents are already baked into the grid via 'A' chars in row 2
+
+    return idle, walk1, walk2, attack, death
+
+
+def make_penguin_sheet(idle, walk1, walk2, attack, death, accent_colour, filename):
+    """Create a 64x64 sheet: idle/walk/attack/death (4 rows x 4 frames x 16px)"""
+    palette = {
+        "B": BK, "W": WH, "O": OR, "E": BK, "A": accent_colour,
+        "G": GY, ".": T,
+    }
     frames = [
-        PENGUIN_IDLE,    PENGUIN_IDLE,    PENGUIN_IDLE,    PENGUIN_WALK_2,  # idle (row 0)
-        PENGUIN_WALK_1,  PENGUIN_WALK_2,  PENGUIN_WALK_1,  PENGUIN_IDLE,   # walk (row 1)
-        PENGUIN_ATTACK,  PENGUIN_IDLE,    PENGUIN_ATTACK,  PENGUIN_IDLE,   # attack (row 2)
-        PENGUIN_DEATH,   PENGUIN_DEATH,   PENGUIN_DEATH,   PENGUIN_DEATH,  # death (row 3)
+        idle,  idle,  idle,  idle,    # idle (row 0): 2 used
+        walk1, walk2, walk1, walk2,   # walk (row 1): 4 frames waddle
+        attack, idle, attack, idle,   # attack (row 2): 2 used
+        death, death, death, death,   # death (row 3): 2 used
     ]
     pixels = [T] * (64 * 64)
     for fi, frame_grid in enumerate(frames):
@@ -186,27 +210,102 @@ def make_penguin_sheet(accent_char, accent_colour, filename):
                 pixels[dest] = frame_px[fy * 16 + fx]
     write_png(filename, 64, 64, pixels)
 
-# ---- Emperor (gold crown stripe) ------------------------------------------
+
+# ---- Emperor: gold crown on head ------------------------------------------
 def make_emperor():
-    # Add a gold stripe across the head
-    base = [list(row) for row in PENGUIN_IDLE]
-    # Crown pixels
-    for x in [5, 6, 7, 8]:
-        if x < 16:
-            base[1][x] = "A"  # gold crown
-    make_penguin_sheet("A", GD, "assets/sprites/players/emperor_sheet.png")
+    idle, w1, w2, atk, death = _make_class_sprites([])
+    # Replace A with gold crown — add extra crown points
+    emperor_idle = [row for row in idle]
+    emperor_idle[1] = "...ABBBBA......."
+    emperor_idle[2] = "...BAAABB......."
 
-# ---- Gentoo (orange goggle stripe, smaller) --------------------------------
+    emperor_w1 = [row for row in w1]
+    emperor_w1[1] = "..ABBBBA........"
+    emperor_w1[2] = "..BAAABB........"
+
+    emperor_w2 = [row for row in w2]
+    emperor_w2[1] = "....ABBBBA......"
+    emperor_w2[2] = "....BAAABB......"
+
+    emperor_atk = [row for row in atk]
+    emperor_atk[1] = "...ABBBBA......."
+    emperor_atk[2] = "...BAAABB......."
+
+    make_penguin_sheet(emperor_idle, emperor_w1, emperor_w2, emperor_atk, death,
+                       GD, "assets/sprites/players/emperor_sheet.png")
+
+
+# ---- Gentoo: orange stripe across eyes (like real gentoo markings) ---------
 def make_gentoo():
-    make_penguin_sheet("A", OR, "assets/sprites/players/gentoo_sheet.png")
+    idle, w1, w2, atk, death = _make_class_sprites([])
+    # Gentoo has orange eye stripe
+    gentoo_idle = [row for row in idle]
+    gentoo_idle[3] = "..BAEWWEBA......";  # A = orange stripe around eyes
 
-# ---- Little Blue (blue tint accent) ----------------------------------------
+    gentoo_w1 = [row for row in w1]
+    gentoo_w1[3] = ".BAEWWEBA.......";
+
+    gentoo_w2 = [row for row in w2]
+    gentoo_w2[3] = "...BAEWWEBA.....";
+
+    gentoo_atk = [row for row in atk]
+    gentoo_atk[3] = "..BAEWWEBA......";
+
+    make_penguin_sheet(gentoo_idle, gentoo_w1, gentoo_w2, gentoo_atk, death,
+                       OR, "assets/sprites/players/gentoo_sheet.png")
+
+
+# ---- Little Blue: light blue body tint (smallest penguin) ------------------
 def make_little_blue():
-    make_penguin_sheet("A", LB, "assets/sprites/players/little_blue_sheet.png")
+    idle, w1, w2, atk, death = _make_class_sprites([])
+    # Little blue: replace black outline with dark blue for softer look
+    # and make body slightly smaller feel via accent color on flippers
+    lb_idle = [row for row in idle]
+    lb_idle[6] = ".ABWWWWWWBA....."
+    lb_idle[9] = ".AAAAAAAABA....."
 
-# ---- Macaroni (yellow crest) -----------------------------------------------
+    lb_w1 = [row for row in w1]
+    lb_w1[6] = "ABWWWWWWBA......"
+    lb_w1[9] = "AAAAAAAAAA......"
+
+    lb_w2 = [row for row in w2]
+    lb_w2[6] = "..ABWWWWWWBA...."
+    lb_w2[9] = "..AAAAAAAABA...."
+
+    lb_atk = [row for row in atk]
+    lb_atk[6] = ".ABWWWWWWABBBBB."
+    lb_atk[9] = ".AAAAAAAABA....."
+
+    make_penguin_sheet(lb_idle, lb_w1, lb_w2, lb_atk, death,
+                       LB, "assets/sprites/players/little_blue_sheet.png")
+
+
+# ---- Macaroni: yellow crest feathers on top --------------------------------
 def make_macaroni():
-    make_penguin_sheet("A", YL, "assets/sprites/players/macaroni_sheet.png")
+    idle, w1, w2, atk, death = _make_class_sprites([])
+    # Macaroni: spiky yellow crest
+    mac_idle = [row for row in idle]
+    mac_idle[0] = "...A.A.A........"
+    mac_idle[1] = "...ABBBB........"
+    mac_idle[2] = "...BAAABB......."
+
+    mac_w1 = [row for row in w1]
+    mac_w1[0] = "..A.A.A........."
+    mac_w1[1] = "..ABBBB........."
+    mac_w1[2] = "..BAAABB........"
+
+    mac_w2 = [row for row in w2]
+    mac_w2[0] = "....A.A.A......."
+    mac_w2[1] = "....ABBBB......."
+    mac_w2[2] = "....BAAABB......"
+
+    mac_atk = [row for row in atk]
+    mac_atk[0] = "...A.A.A........"
+    mac_atk[1] = "...ABBBB........"
+    mac_atk[2] = "...BAAABB......."
+
+    make_penguin_sheet(mac_idle, mac_w1, mac_w2, mac_atk, death,
+                       YL, "assets/sprites/players/macaroni_sheet.png")
 
 # ---------------------------------------------------------------------------
 # Enemy sprites (16×16 single frames → simple 32×16 sprite sheet: idle + walk)

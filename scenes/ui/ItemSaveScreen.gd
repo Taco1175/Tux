@@ -29,18 +29,17 @@ func _show_run_stats() -> void:
 		var floors := run.floor_number
 		var tokens := run.run_currency
 		title_label.text = "Expedition Complete"
-		stats_label.text = "Floors: %d  |  Tokens earned: %d" % [floors, tokens]
+		var kills := run.enemies_killed
+		stats_label.text = "Floors: %d  |  Enemies slain: %d  |  Tokens: %d" % [floors, kills, tokens]
 	else:
 		title_label.text = "Expedition Complete"
 		stats_label.text = ""
 
 
 func _populate_items() -> void:
-	# Gather items from all local players (in practice, just the local one)
-	for player in get_tree().get_nodes_in_group("players"):
-		if player.get("is_local_player") and player.is_local_player:
-			run_items = player.inventory.duplicate()
-			break
+	# Get items from run snapshot (player nodes are freed by scene change)
+	if GameManager.current_run:
+		run_items = GameManager.current_run.collected_items.duplicate()
 
 	# If no items found (e.g. player died early), show message
 	if run_items.is_empty():

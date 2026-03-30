@@ -1,24 +1,25 @@
 extends "../Player.gd"
-# Emperor Penguin — The Oldest Sibling
-# Warrior archetype. Overprotective. Secretly the most scared.
-# High HP, heavy armor, shield bash. Slow but immovable.
+# Emperor Penguin — Lead Guitar
+# The oldest sibling. Wields a battle axe guitar.
+# Heavy riffs, heavy armor. Slow but unstoppable.
+# Secondary: Power Chord — AoE sonic blast that knockbacks enemies.
 
 const CLASS_INDEX := ItemDatabase.PlayerClass.EMPEROR
 
-var shield_bash_cooldown: float = 0.0
-const SHIELD_BASH_COOLDOWN_MAX := 4.0
-const SHIELD_BASH_RANGE := 48.0
-const SHIELD_BASH_DAMAGE := 20
-const SHIELD_BASH_KNOCKBACK := 150.0
+var power_chord_cooldown: float = 0.0
+const POWER_CHORD_COOLDOWN_MAX := 4.0
+const POWER_CHORD_RANGE := 48.0
+const POWER_CHORD_DAMAGE := 20
+const POWER_CHORD_KNOCKBACK := 150.0
 
-# Block: passive chance to reduce incoming damage
+# Passive: Stage Presence — chance to block incoming damage
 const BLOCK_CHANCE_BASE := 0.15
 var block_chance: float = BLOCK_CHANCE_BASE
 
 
 func _ready() -> void:
 	player_class = CLASS_INDEX
-	# Emperor stats
+	# Emperor stats — the heaviest hitter, slowest tempo
 	max_hp = 140
 	current_hp = 140
 	max_mana = 25
@@ -42,64 +43,61 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	super._physics_process(delta)
-	if shield_bash_cooldown > 0:
-		shield_bash_cooldown -= delta
+	if power_chord_cooldown > 0:
+		power_chord_cooldown -= delta
 
 
-# Override: Primary = melee attack with higher base damage
+# Primary: Heavy axe guitar swing
 func _use_primary_ability() -> void:
 	attack()
 
 
-# Override: Secondary = Shield Bash — AoE knockback in front
+# Secondary: Power Chord — AoE sonic knockback in a frontal cone
 func _use_secondary_ability() -> void:
-	if shield_bash_cooldown > 0:
+	if power_chord_cooldown > 0:
 		return
-	shield_bash_cooldown = SHIELD_BASH_COOLDOWN_MAX
+	power_chord_cooldown = POWER_CHORD_COOLDOWN_MAX
+	AudioManager.play_sfx("power_chord")
+	var aim_dir := _get_aim_direction()
 	if multiplayer.is_server():
-		_request_shield_bash(global_position, sprite.flip_h)
+		_request_power_chord(global_position, aim_dir)
 	else:
-		_request_shield_bash.rpc_id(1, global_position, sprite.flip_h)
+		_request_power_chord.rpc_id(1, global_position, aim_dir)
 
 
 @rpc("any_peer", "reliable")
-func _request_shield_bash(origin: Vector2, facing_left: bool) -> void:
+func _request_power_chord(origin: Vector2, direction: Vector2) -> void:
 	if not multiplayer.is_server():
 		return
-	var direction := Vector2.LEFT if facing_left else Vector2.RIGHT
-	# Damage all enemies in a frontal arc
+	# Sonic blast damages all enemies in a frontal arc
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		var to_enemy: Vector2 = (enemy as Node2D).global_position - origin
 		var dist: float = to_enemy.length()
-		if dist <= SHIELD_BASH_RANGE:
-			# Must be roughly in the facing direction (dot > 0.2 gives ~78° cone)
+		if dist <= POWER_CHORD_RANGE:
 			if dist < 1.0 or to_enemy.normalized().dot(direction) > 0.2:
-				(enemy as CharacterBody2D).take_damage(SHIELD_BASH_DAMAGE)
-				# Apply knockback by pushing enemy velocity
-				(enemy as CharacterBody2D).velocity += direction * SHIELD_BASH_KNOCKBACK
-	_execute_shield_bash.rpc(origin, direction)
+				(enemy as CharacterBody2D).take_damage(POWER_CHORD_DAMAGE)
+				(enemy as CharacterBody2D).velocity += direction * POWER_CHORD_KNOCKBACK
+	_execute_power_chord.rpc(origin, direction)
 
 
 @rpc("authority", "call_local", "reliable")
-func _execute_shield_bash(_origin: Vector2, _direction: Vector2) -> void:
-	# Visual flash on all clients
-	sprite.modulate = Color(0.5, 0.8, 1.0)
+func _execute_power_chord(_origin: Vector2, _direction: Vector2) -> void:
+	# Visual: orange sonic blast flash
+	sprite.modulate = Color(1.0, 0.6, 0.2)
 	await get_tree().create_timer(0.2).timeout
 	if sprite:
 		sprite.modulate = Color.WHITE
 
 
-# Passive: block chance reduces damage
+# Passive: Stage Presence — chance to shrug off damage
 func take_damage(amount: int) -> void:
 	if randf() < block_chance:
-		# Block — take 0 damage, brief flash
-		sprite.modulate = Color(0.5, 0.8, 1.0)
+		sprite.modulate = Color(1.0, 0.6, 0.2)
 		await get_tree().create_timer(0.2).timeout
 		sprite.modulate = Color.WHITE
 		return
 	super.take_damage(amount)
 
 
-# Emperor's loot affinity: strength scaling, defense affixes appear more often
 func get_loot_class_bias() -> int:
 	return CLASS_INDEX

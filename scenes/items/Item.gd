@@ -24,10 +24,21 @@ func setup(data: Dictionary) -> void:
 
 	# Tint the sprite by rarity color (placeholder until real sprites exist)
 	if sprite:
+		if not sprite.texture:
+			var tex := PlaceholderTexture2D.new()
+			tex.size = Vector2(8, 8)
+			sprite.texture = tex
 		sprite.modulate = color
 
 	# Glow intensity scales with rarity
 	if glow:
+		if not glow.texture:
+			glow.texture = GradientTexture2D.new()
+			(glow.texture as GradientTexture2D).fill = GradientTexture2D.FILL_RADIAL
+			var gradient := Gradient.new()
+			gradient.set_color(0, Color.WHITE)
+			gradient.set_color(1, Color(1, 1, 1, 0))
+			(glow.texture as GradientTexture2D).gradient = gradient
 		glow.color = color
 		glow.energy = 0.3 + rarity * 0.15
 		glow.visible = rarity >= ItemDatabase.Rarity.RARE
