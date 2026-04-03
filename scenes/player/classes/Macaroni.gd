@@ -61,20 +61,30 @@ func _use_primary_ability() -> void:
 	if current_mana >= 5:
 		current_mana -= 5
 		mana_changed.emit(current_mana, max_mana)
-		var aim_dir := _get_aim_direction()
-		if multiplayer.is_server():
-			_request_sound_wave(global_position, aim_dir)
+		# Beat-reactive spellcast
+		var beat_info := BeatClock.is_on_beat()
+		if beat_info.on_beat:
+			MusicManager.add_intensity(0.12 * beat_info.accuracy)
+			MusicManager.play_stinger("on_beat_hit")
+			_show_beat_feedback(beat_info.rating, beat_info.accuracy)
 		else:
-			_request_sound_wave.rpc_id(1, global_position, aim_dir)
+			MusicManager.add_intensity(0.04)
+		var aim_dir := _get_aim_direction()
+		var acc: float = beat_info.accuracy if beat_info.on_beat else 0.0
+		if multiplayer.is_server():
+			_request_sound_wave(global_position, aim_dir, acc)
+		else:
+			_request_sound_wave.rpc_id(1, global_position, aim_dir, acc)
 	else:
 		attack()  # Fallback to melee — swinging the bass like a bat
 
 
 @rpc("any_peer", "reliable")
-func _request_sound_wave(origin: Vector2, direction: Vector2) -> void:
+func _request_sound_wave(origin: Vector2, direction: Vector2, beat_accuracy: float = 0.0) -> void:
 	if not multiplayer.is_server():
 		return
-	var damage := int((intelligence + randi_range(8, 15)) * calm_multiplier)
+	var beat_bonus := 1.0 + beat_accuracy * 0.3
+	var damage := int((intelligence + randi_range(8, 15)) * calm_multiplier * beat_bonus)
 	_broadcast_sound_wave.rpc(origin, direction.normalized(), damage)
 
 
@@ -94,19 +104,27 @@ func _use_secondary_ability() -> void:
 	play_secondary_animation()
 	current_mana -= BASS_DROP_MANA_COST
 	mana_changed.emit(current_mana, max_mana)
-
+	# Beat-reactive Bass Drop
+	var beat_info := BeatClock.is_on_beat()
+	var beat_bonus: float = 1.0
+	if beat_info.on_beat:
+		beat_bonus = 1.0 + beat_info.accuracy * 0.3
+		MusicManager.add_intensity(0.2 * beat_info.accuracy)
+		_show_beat_feedback(beat_info.rating, beat_info.accuracy)
+	else:
+		MusicManager.add_intensity(0.08)
 	var mouse_pos := get_global_mouse_position() if is_local_player else global_position
 	if multiplayer.is_server():
-		_request_bass_drop(global_position, mouse_pos)
+		_request_bass_drop(global_position, mouse_pos, beat_bonus)
 	else:
-		_request_bass_drop.rpc_id(1, global_position, mouse_pos)
+		_request_bass_drop.rpc_id(1, global_position, mouse_pos, beat_bonus)
 
 
 @rpc("any_peer", "reliable")
-func _request_bass_drop(origin: Vector2, target: Vector2) -> void:
+func _request_bass_drop(origin: Vector2, target: Vector2, beat_bonus: float = 1.0) -> void:
 	if not multiplayer.is_server():
 		return
-	var damage := int((BASS_DROP_BASE_DAMAGE + intelligence) * calm_multiplier)
+	var damage := int((BASS_DROP_BASE_DAMAGE + intelligence) * calm_multiplier * clampf(beat_bonus, 1.0, 1.3))
 	_broadcast_bass_drop.rpc(origin, target, damage, BASS_DROP_RADIUS)
 
 

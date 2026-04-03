@@ -56,20 +56,28 @@ func _use_primary_ability() -> void:
 	combo_count += 1
 	combo_timer = COMBO_WINDOW
 	if combo_count >= 3:
-		if multiplayer.is_server():
-			_request_drum_fill()
+		var beat_info := BeatClock.is_on_beat()
+		var beat_bonus: float = 1.0
+		if beat_info.on_beat:
+			beat_bonus = 1.0 + beat_info.accuracy * 0.35  # Gentoo gets extra combo bonus
+			MusicManager.add_intensity(0.2 * beat_info.accuracy)
+			_show_beat_feedback(beat_info.rating, beat_info.accuracy)
 		else:
-			_request_drum_fill.rpc_id(1)
+			MusicManager.add_intensity(0.08)
+		if multiplayer.is_server():
+			_request_drum_fill(beat_bonus)
+		else:
+			_request_drum_fill.rpc_id(1, beat_bonus)
 		combo_count = 0
 	else:
 		attack()
 
 
 @rpc("any_peer", "reliable")
-func _request_drum_fill() -> void:
+func _request_drum_fill(beat_bonus: float = 1.0) -> void:
 	if not multiplayer.is_server():
 		return
-	var damage := _calculate_attack_damage() * 2
+	var damage := int(_calculate_attack_damage() * 2 * clampf(beat_bonus, 1.0, 1.35))
 	const FILL_HIT_RANGE := 32.0
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		if global_position.distance_to((enemy as Node2D).global_position) <= FILL_HIT_RANGE:
@@ -93,6 +101,12 @@ func _use_secondary_ability() -> void:
 	dash_cooldown = DASH_COOLDOWN_MAX
 	AudioManager.play_sfx("drum_fill")
 	play_secondary_animation()
+	var beat_info := BeatClock.is_on_beat()
+	if beat_info.on_beat:
+		MusicManager.add_intensity(0.15 * beat_info.accuracy)
+		_show_beat_feedback(beat_info.rating, beat_info.accuracy)
+	else:
+		MusicManager.add_intensity(0.05)
 	var dir := _get_aim_direction()
 	_execute_dash(dir)
 

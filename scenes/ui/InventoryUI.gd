@@ -31,6 +31,7 @@ var _drag_ghost: Control = null     # Visual that follows mouse
 
 func _ready() -> void:
 	hide()
+	process_mode = Node.PROCESS_MODE_ALWAYS
 
 
 func toggle(player: Node) -> void:
@@ -38,6 +39,7 @@ func toggle(player: Node) -> void:
 	if visible:
 		hide()
 		_cancel_drag()
+		get_tree().paused = false
 	else:
 		show()
 		selected_item = {}
@@ -305,6 +307,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		_cancel_drag()
 		hide()
+		get_tree().paused = false
 		get_viewport().set_input_as_handled()
 		return
 	# Cancel drag on right-click

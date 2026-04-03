@@ -23,6 +23,10 @@ extends Control
 
 var player_ref: Node = null
 
+# Beat pulse indicator
+var beat_indicator: ColorRect = null
+var _beat_pulse_alpha: float = 0.0
+
 # Hotbar items (consumables bound to 1-4 keys / D-pad)
 var hotbar_items: Array = [null, null, null, null]
 
@@ -78,18 +82,21 @@ func _ready() -> void:
 	_build_dialogue_ui()
 	_build_status_bar()
 	_build_hotbar_slots()
+	_build_beat_indicator()
 
 
 func _on_run_started(_r) -> void:
 	_update_floor_label()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	# Update token counter live
 	if token_label and GameManager.current_run:
 		token_label.text = "Tide Tokens: %d" % GameManager.current_run.run_currency
 	# Update ability cooldown bars
 	_update_cooldown_bars()
+	# Beat pulse indicator
+	_update_beat_indicator(delta)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -113,6 +120,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("inventory_open") and player_ref and inventory_ui:
 		inventory_ui.toggle(player_ref)
+		get_tree().paused = inventory_ui.visible
 	if event.is_action_pressed("pause"):
 		_toggle_pause()
 	# Hotbar 1-4 (number keys or D-pad)
@@ -362,6 +370,32 @@ func _build_status_bar() -> void:
 	add_child(status_container)
 
 
+func _build_beat_indicator() -> void:
+	# Small pulsing bar at bottom-center that shows the beat
+	beat_indicator = ColorRect.new()
+	beat_indicator.size = Vector2(24, 3)
+	beat_indicator.position = Vector2(228, 262)  # bottom center (480/2 - 12, 270 - 8)
+	beat_indicator.color = Color(1.0, 0.9, 0.3, 0.0)
+	beat_indicator.z_index = 5
+	add_child(beat_indicator)
+	BeatClock.beat_hit.connect(_on_beat_hit)
+
+
+func _on_beat_hit(_beat_num: int) -> void:
+	_beat_pulse_alpha = 1.0
+
+
+func _update_beat_indicator(delta: float) -> void:
+	if not beat_indicator:
+		return
+	_beat_pulse_alpha = move_toward(_beat_pulse_alpha, 0.0, delta * 4.0)
+	beat_indicator.color.a = _beat_pulse_alpha
+	# Scale width slightly on pulse
+	var scale_factor := 1.0 + _beat_pulse_alpha * 0.5
+	beat_indicator.size.x = 24 * scale_factor
+	beat_indicator.position.x = 240 - beat_indicator.size.x * 0.5
+
+
 func update_status_effects(effects: Array[Dictionary]) -> void:
 	if not status_container:
 		return
@@ -492,6 +526,7 @@ func play_ending_cutscene(choice: int) -> void:
 	ending_desc.text = data.get("desc", "")
 	for child in ending_buttons.get_children():
 		child.queue_free()
+	_show_save_soundtrack_prompt()
 
 
 # -------------------------------------------------------
@@ -506,6 +541,72 @@ func show_game_over() -> void:
 		var tokens: int = run.run_currency if run else 0
 		var kills: int = run.enemies_killed if run else 0
 		label.text = "The deep claims another.\n\nFloors reached: %d\nEnemies slain: %d\nTide Tokens earned: %d" % [floors, kills, tokens]
+	_show_save_soundtrack_prompt()
+
+
+func _show_save_soundtrack_prompt() -> void:
+	# "Did you love this music?" prompt
+	var prompt_panel := PanelContainer.new()
+	prompt_panel.name = "SoundtrackPrompt"
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.12, 0.1, 0.18, 0.95)
+	style.border_color = Color(0.6, 0.5, 0.2)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(2)
+	style.set_content_margin_all(8)
+	prompt_panel.add_theme_stylebox_override("panel", style)
+
+	var vbox := VBoxContainer.new()
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_theme_constant_override("separation", 6)
+
+	var header := Label.new()
+	header.text = "Love this soundtrack?"
+	header.add_theme_font_size_override("font_size", 8)
+	header.add_theme_color_override("font_color", Color(0.9, 0.8, 0.3))
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(header)
+
+	var desc := Label.new()
+	desc.text = "Save it to replay anytime"
+	desc.add_theme_font_size_override("font_size", 6)
+	desc.add_theme_color_override("font_color", Color(0.7, 0.7, 0.8))
+	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(desc)
+
+	var btn_row := HBoxContainer.new()
+	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	btn_row.add_theme_constant_override("separation", 8)
+
+	var save_btn := Button.new()
+	save_btn.text = "Save"
+	save_btn.custom_minimum_size = Vector2(50, 0)
+	save_btn.pressed.connect(func():
+		var timestamp := str(int(Time.get_unix_time_from_system()))
+		var run := GameManager.current_run
+		var name_str := "run_%s_floor%d" % [timestamp, run.floor_number if run else 0]
+		if MusicManager.save_current_soundtrack(name_str):
+			header.text = "Saved!"
+			desc.text = name_str
+			save_btn.disabled = true
+		else:
+			header.text = "No stems to save"
+	)
+	btn_row.add_child(save_btn)
+
+	var skip_btn := Button.new()
+	skip_btn.text = "Nah"
+	skip_btn.custom_minimum_size = Vector2(50, 0)
+	skip_btn.pressed.connect(func(): prompt_panel.queue_free())
+	btn_row.add_child(skip_btn)
+
+	vbox.add_child(btn_row)
+	prompt_panel.add_child(vbox)
+
+	# Position below the game over panel
+	prompt_panel.position = Vector2(170, 200)
+	prompt_panel.size = Vector2(140, 0)
+	add_child(prompt_panel)
 
 
 # -------------------------------------------------------
@@ -551,6 +652,13 @@ func _setup_pause_buttons() -> void:
 	resume_btn.pressed.connect(_resume)
 	vbox.add_child(resume_btn)
 
+	var settings_btn := Button.new()
+	settings_btn.text = "Settings"
+	settings_btn.add_theme_font_size_override("font_size", 8)
+	settings_btn.custom_minimum_size = Vector2(0, 16)
+	settings_btn.pressed.connect(_show_settings_menu)
+	vbox.add_child(settings_btn)
+
 	var controls_btn := Button.new()
 	controls_btn.text = "Controls"
 	controls_btn.add_theme_font_size_override("font_size", 8)
@@ -589,6 +697,117 @@ const REBINDABLE_ACTIONS := [
 
 var _rebind_buttons: Dictionary = {}  # action_name -> Button
 var _waiting_for_input: String = ""   # action currently being rebound
+
+
+func _show_settings_menu() -> void:
+	var vbox := pause_panel.get_node_or_null("VBox")
+	if not vbox:
+		return
+	for child in vbox.get_children():
+		child.queue_free()
+
+	var title := Label.new()
+	title.text = "Settings"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 10)
+	vbox.add_child(title)
+
+	# Music Volume
+	var music_row := HBoxContainer.new()
+	music_row.add_theme_constant_override("separation", 4)
+	vbox.add_child(music_row)
+
+	var music_lbl := Label.new()
+	music_lbl.text = "Music"
+	music_lbl.add_theme_font_size_override("font_size", 7)
+	music_lbl.custom_minimum_size = Vector2(32, 0)
+	music_row.add_child(music_lbl)
+
+	var music_slider := HSlider.new()
+	music_slider.min_value = 0.0
+	music_slider.max_value = 1.0
+	music_slider.step = 0.05
+	music_slider.value = MusicManager.get_music_volume()
+	music_slider.custom_minimum_size = Vector2(80, 12)
+	music_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	music_slider.value_changed.connect(func(val: float): MusicManager.set_music_volume(val))
+	music_row.add_child(music_slider)
+
+	var music_val := Label.new()
+	music_val.text = "%d%%" % int(MusicManager.get_music_volume() * 100)
+	music_val.add_theme_font_size_override("font_size", 6)
+	music_val.custom_minimum_size = Vector2(24, 0)
+	music_row.add_child(music_val)
+	music_slider.value_changed.connect(func(val: float): music_val.text = "%d%%" % int(val * 100))
+
+	# SFX Volume
+	var sfx_row := HBoxContainer.new()
+	sfx_row.add_theme_constant_override("separation", 4)
+	vbox.add_child(sfx_row)
+
+	var sfx_lbl := Label.new()
+	sfx_lbl.text = "SFX"
+	sfx_lbl.add_theme_font_size_override("font_size", 7)
+	sfx_lbl.custom_minimum_size = Vector2(32, 0)
+	sfx_row.add_child(sfx_lbl)
+
+	var sfx_slider := HSlider.new()
+	sfx_slider.min_value = 0.0
+	sfx_slider.max_value = 1.0
+	sfx_slider.step = 0.05
+	sfx_slider.value = AudioManager.sfx_volume
+	sfx_slider.custom_minimum_size = Vector2(80, 12)
+	sfx_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sfx_slider.value_changed.connect(func(val: float): AudioManager.set_sfx_volume(val))
+	sfx_row.add_child(sfx_slider)
+
+	var sfx_val := Label.new()
+	sfx_val.text = "%d%%" % int(AudioManager.sfx_volume * 100)
+	sfx_val.add_theme_font_size_override("font_size", 6)
+	sfx_val.custom_minimum_size = Vector2(24, 0)
+	sfx_row.add_child(sfx_val)
+	sfx_slider.value_changed.connect(func(val: float): sfx_val.text = "%d%%" % int(val * 100))
+
+	# Master Volume
+	var master_row := HBoxContainer.new()
+	master_row.add_theme_constant_override("separation", 4)
+	vbox.add_child(master_row)
+
+	var master_lbl := Label.new()
+	master_lbl.text = "Master"
+	master_lbl.add_theme_font_size_override("font_size", 7)
+	master_lbl.custom_minimum_size = Vector2(32, 0)
+	master_row.add_child(master_lbl)
+
+	var master_db: float = AudioServer.get_bus_volume_db(AudioServer.get_bus_index("Master"))
+	var master_linear: float = db_to_linear(master_db)
+
+	var master_slider := HSlider.new()
+	master_slider.min_value = 0.0
+	master_slider.max_value = 1.0
+	master_slider.step = 0.05
+	master_slider.value = master_linear
+	master_slider.custom_minimum_size = Vector2(80, 12)
+	master_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	master_slider.value_changed.connect(func(val: float):
+		AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Master"), linear_to_db(maxf(val, 0.001)))
+	)
+	master_row.add_child(master_slider)
+
+	var master_val := Label.new()
+	master_val.text = "%d%%" % int(master_linear * 100)
+	master_val.add_theme_font_size_override("font_size", 6)
+	master_val.custom_minimum_size = Vector2(24, 0)
+	master_row.add_child(master_val)
+	master_slider.value_changed.connect(func(val: float): master_val.text = "%d%%" % int(val * 100))
+
+	# Back button
+	var back_btn := Button.new()
+	back_btn.text = "Back"
+	back_btn.add_theme_font_size_override("font_size", 8)
+	back_btn.custom_minimum_size = Vector2(0, 16)
+	back_btn.pressed.connect(_setup_pause_buttons)
+	vbox.add_child(back_btn)
 
 
 func _show_controls_menu() -> void:

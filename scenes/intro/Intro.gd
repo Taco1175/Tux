@@ -104,10 +104,14 @@ var text_label: Label
 var skip_label: Label
 var title_label: Label  # For the big TUX reveal
 
+# Waddling penguins
+var _penguins: Array = []  # {node, sprite, base_y, timer, speed}
+
 
 func _ready() -> void:
 	# Build the UI
 	_build_ui()
+	_spawn_waddling_penguins()
 	# Start first beat after brief darkness
 	var tween := create_tween()
 	tween.tween_interval(1.0)
@@ -171,6 +175,8 @@ func _process(delta: float) -> void:
 	beat_timer -= delta
 	if beat_timer <= 0 and current_beat >= 0:
 		_next_beat()
+
+	_animate_penguins(delta)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -247,6 +253,91 @@ func _get_portrait_color(key: String) -> Color:
 		"band":       return Color(1.0, 0.2, 0.2)    # Red — TUX logo
 		"rick":       return Color(0.7, 0.5, 0.3)    # Brown — roadie
 	return Color.WHITE
+
+
+func _spawn_waddling_penguins() -> void:
+	# 4 penguins (the siblings) waddle across the bottom of the screen
+	var penguin_colors := [
+		Color(0.3, 0.5, 0.9),   # Emperor — blue tint
+		Color(1.0, 0.5, 0.2),   # Gentoo — orange tint
+		Color(0.4, 0.9, 0.5),   # Little Blue — green tint
+		Color(0.9, 0.3, 0.9),   # Macaroni — purple tint
+	]
+	for i in 4:
+		var penguin := Node2D.new()
+		# Start off-screen left, spaced apart
+		penguin.position = Vector2(-30.0 - i * 25.0, 240.0)
+		penguin.z_index = 5
+
+		var img := _make_penguin_sprite(penguin_colors[i])
+		var tex := ImageTexture.create_from_image(img)
+		var spr := Sprite2D.new()
+		spr.texture = tex
+		spr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		spr.scale = Vector2(2.5, 2.5)
+		penguin.add_child(spr)
+		add_child(penguin)
+
+		_penguins.append({
+			node = penguin,
+			sprite = spr,
+			base_y = 240.0,
+			timer = randf() * 6.28,
+			speed = 14.0 + i * 0.5,  # slightly different speeds for natural look
+		})
+
+
+func _make_penguin_sprite(tint: Color) -> Image:
+	# 8x10 pixel penguin (side-facing, walking pose)
+	var w := 8
+	var h := 10
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+
+	var black := Color(0.1, 0.1, 0.15, 1.0)
+	var white := Color(0.9, 0.92, 0.95, 1.0)
+	var orange := Color(0.95, 0.6, 0.15, 1.0)
+	# Subtle tint on the black
+	var tinted := Color(
+		black.r + tint.r * 0.15,
+		black.g + tint.g * 0.15,
+		black.b + tint.b * 0.15, 1.0)
+
+	# Side-facing walking penguin
+	# Head
+	for x in range(3, 7): img.set_pixel(x, 0, tinted)
+	for x in range(2, 7): img.set_pixel(x, 1, tinted)
+	img.set_pixel(5, 1, white)  # eye
+	for x in range(2, 7): img.set_pixel(x, 2, tinted)
+	img.set_pixel(7, 2, orange)  # beak
+	# Body
+	for y in range(3, 7):
+		for x in range(1, 6):
+			img.set_pixel(x, y, tinted if x < 4 else white)
+	# Wing (extended back)
+	img.set_pixel(0, 4, tinted)
+	img.set_pixel(0, 5, tinted)
+	# Feet (walking pose — one forward, one back)
+	img.set_pixel(2, 7, orange)
+	img.set_pixel(3, 7, orange)
+	img.set_pixel(5, 8, orange)
+	img.set_pixel(4, 8, orange)
+
+	return img
+
+
+func _animate_penguins(delta: float) -> void:
+	for p in _penguins:
+		p.timer += delta
+		# Walk to the right
+		p.node.position.x += p.speed * delta
+		# Waddle bob
+		p.node.position.y = p.base_y + sin(p.timer * 6.0) * 1.5
+		# Slight body tilt with waddle
+		p.node.rotation = sin(p.timer * 6.0) * 0.12
+		# Wrap around when off-screen right
+		if p.node.position.x > 510:
+			p.node.position.x = -20.0
 
 
 func _finish_intro() -> void:

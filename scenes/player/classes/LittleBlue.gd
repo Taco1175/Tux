@@ -67,20 +67,30 @@ func _use_secondary_ability() -> void:
 	ballad_cooldown = BALLAD_COOLDOWN_MAX
 	AudioManager.play_sfx("power_ballad")
 	play_secondary_animation()
-	if multiplayer.is_server():
-		_request_power_ballad(global_position)
+	# Beat-reactive heal: on-beat heals are stronger
+	var beat_info := BeatClock.is_on_beat()
+	var beat_bonus: float = 1.0
+	if beat_info.on_beat:
+		beat_bonus = 1.0 + beat_info.accuracy * 0.4  # up to +40% heal on-beat
+		MusicManager.add_intensity(0.15 * beat_info.accuracy)
+		_show_beat_feedback(beat_info.rating, beat_info.accuracy)
 	else:
-		_request_power_ballad.rpc_id(1, global_position)
+		MusicManager.add_intensity(0.05)
+	if multiplayer.is_server():
+		_request_power_ballad(global_position, beat_bonus)
+	else:
+		_request_power_ballad.rpc_id(1, global_position, beat_bonus)
 
 
 @rpc("any_peer", "reliable")
-func _request_power_ballad(origin: Vector2) -> void:
+func _request_power_ballad(origin: Vector2, beat_bonus: float = 1.0) -> void:
 	if not multiplayer.is_server():
 		return
+	var heal_amount := int(BALLAD_HEAL_AMOUNT * clampf(beat_bonus, 1.0, 1.4))
 	for player in get_tree().get_nodes_in_group("players"):
 		if origin.distance_to((player as Node2D).global_position) <= BALLAD_RADIUS:
-			player.heal.rpc(BALLAD_HEAL_AMOUNT)
-	_broadcast_power_ballad.rpc(origin, BALLAD_HEAL_AMOUNT)
+			player.heal.rpc(heal_amount)
+	_broadcast_power_ballad.rpc(origin, heal_amount)
 
 
 @rpc("authority", "call_local", "reliable")
@@ -99,6 +109,7 @@ func _trigger_death_metal() -> void:
 	snap_timer = SNAP_DURATION
 	AudioManager.play_sfx("death_metal")
 	play_secondary_animation()
+	MusicManager.set_intensity(0.9)  # Death Metal cranks the music to near-max
 	sprite.modulate = Color(0.7, 0.0, 0.0)
 	# Temporary stat override — pure aggression
 	crit_chance = 0.40

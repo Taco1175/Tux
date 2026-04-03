@@ -223,6 +223,12 @@ func take_damage(amount: int, attacker: Node2D = null) -> void:
 	# Dodge check
 	if dodge_chance > 0.0 and randf() < dodge_chance:
 		_spawn_dodge_text()
+		# Beat-reactive dodge: on-beat dodge gets extra feedback
+		var beat_info := BeatClock.is_on_beat()
+		if beat_info.on_beat:
+			MusicManager.add_intensity(0.1)
+			MusicManager.play_stinger("on_beat_block")
+			_show_beat_feedback(beat_info.rating, beat_info.accuracy)
 		# Brief flash to show dodge
 		sprite.modulate = Color(0.7, 0.7, 1.0, 0.5)
 		is_invincible = true
@@ -295,6 +301,41 @@ func _spawn_dodge_text() -> void:
 	tween.tween_callback(lbl.queue_free)
 
 
+func _show_beat_feedback(rating: String, accuracy: float) -> void:
+	var color := Color.WHITE
+	var text := ""
+	match rating:
+		"perfect":
+			text = "PERFECT"
+			color = Color(1.0, 0.9, 0.2)  # gold
+		"great":
+			text = "GREAT"
+			color = Color(0.3, 1.0, 0.5)  # green
+		"good":
+			text = "GOOD"
+			color = Color(0.5, 0.8, 1.0)  # light blue
+		_:
+			return
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", 6)
+	lbl.add_theme_color_override("font_color", color)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.position = Vector2(-12, -28)
+	lbl.z_index = 11
+	add_child(lbl)
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(lbl, "position:y", lbl.position.y - 12, 0.5)
+	tween.tween_property(lbl, "modulate:a", 0.0, 0.5).set_delay(0.2)
+	# Scale pop effect for perfect hits
+	if rating == "perfect":
+		lbl.scale = Vector2(1.5, 1.5)
+		tween.tween_property(lbl, "scale", Vector2(1.0, 1.0), 0.15)
+	tween.set_parallel(false)
+	tween.tween_callback(lbl.queue_free)
+
+
 func _screen_shake(intensity: float, duration: float) -> void:
 	var cam := get_viewport().get_camera_2d()
 	if not cam:
@@ -343,18 +384,30 @@ func attack() -> void:
 		return
 	attack_cooldown = attack_cooldown_max
 	AudioManager.play_attack_sfx(player_class)
+	# Beat-reactive combat: check timing
+	var beat_info := BeatClock.is_on_beat()
+	var beat_bonus: float = 1.0
+	if beat_info.on_beat:
+		beat_bonus = 1.0 + beat_info.accuracy * 0.3  # up to +30% damage
+		MusicManager.add_intensity(0.15 * beat_info.accuracy)
+		MusicManager.play_stinger("on_beat_hit")
+		if beat_info.rating == "perfect":
+			MusicManager.play_stinger("perfect_hit")
+		_show_beat_feedback(beat_info.rating, beat_info.accuracy)
+	else:
+		MusicManager.add_intensity(0.05)
 	var attack_dir := _get_aim_direction()
 	if multiplayer.is_server():
-		_request_attack_directed(attack_dir)
+		_request_attack_directed(attack_dir, beat_bonus)
 	else:
-		_request_attack_directed.rpc_id(1, attack_dir)
+		_request_attack_directed.rpc_id(1, attack_dir, beat_bonus)
 
 
 @rpc("any_peer", "reliable")
-func _request_attack_directed(dir: Vector2) -> void:
+func _request_attack_directed(dir: Vector2, beat_bonus: float = 1.0) -> void:
 	if not multiplayer.is_server():
 		return
-	var damage := _calculate_attack_damage()
+	var damage := int(_calculate_attack_damage() * clampf(beat_bonus, 1.0, 1.3))
 	const MELEE_RANGE := 30.0
 	const AIM_CONE := 0.7  # ~90 degree cone (dot product threshold)
 	var hit_count := 0

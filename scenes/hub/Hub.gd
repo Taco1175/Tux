@@ -43,7 +43,7 @@ func _ready() -> void:
 	interact_label.hide()
 	if inventory_ui:
 		inventory_ui.hide()
-	AudioManager.play_track("hub")
+	MusicManager.play_zone("hub")
 	# Note: We handle gifts via _gift_queue in _dismiss_hub_dialogue, not via signal
 
 

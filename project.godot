@@ -27,6 +27,9 @@ NetworkManager="*res://scripts/globals/NetworkManager.gd"
 ItemDatabase="*res://scripts/globals/ItemDatabase.gd"
 UnlockManager="*res://scripts/globals/UnlockManager.gd"
 DialogueManager="*res://scripts/globals/DialogueManager.gd"
+BeatClock="*res://scripts/globals/BeatClock.gd"
+MusicManager="*res://scripts/globals/MusicManager.gd"
+LegacyMusicPlayer="*res://scripts/globals/LegacyMusicPlayer.gd"
 AudioManager="*res://scripts/globals/AudioManager.gd"
 
 [display]

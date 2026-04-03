@@ -24,13 +24,13 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -80.0
-offset_top = -80.0
+offset_top = -110.0
 offset_right = 80.0
-offset_bottom = 80.0
+offset_bottom = 50.0
 grow_horizontal = 2
 grow_vertical = 2
 alignment = 1
-theme_override_constants/separation = 10
+theme_override_constants/separation = 6
 
 [node name="TitleLabel" type="Label" parent="UI"]
 text = "TUX"
@@ -38,14 +38,9 @@ horizontal_alignment = 1
 theme_override_font_sizes/font_size = 32
 
 [node name="SubtitleLabel" type="Label" parent="UI"]
-text = "The deep is calling."
+text = "Life's a beach."
 horizontal_alignment = 1
 modulate = Color(0.6, 0.7, 0.9, 1)
-
-[node name="TokenLabel" type="Label" parent="UI"]
-text = "Tide Tokens: 0"
-horizontal_alignment = 1
-modulate = Color(0.9, 0.8, 0.3, 1)
 
 [node name="Buttons" type="VBoxContainer" parent="UI"]
 alignment = 1
@@ -53,25 +48,23 @@ theme_override_constants/separation = 6
 
 [node name="PlayButton" type="Button" parent="UI/Buttons"]
 custom_minimum_size = Vector2(120, 0)
+flat = true
+modulate = Color(1, 1, 1, 0.7)
 text = "Play"
 
-[node name="ShopButton" type="Button" parent="UI/Buttons"]
+[node name="SettingsButton" type="Button" parent="UI/Buttons"]
 custom_minimum_size = Vector2(120, 0)
-text = "Unlock Shop"
+flat = true
+modulate = Color(1, 1, 1, 0.7)
+text = "Settings"
 
 [node name="QuitButton" type="Button" parent="UI/Buttons"]
 custom_minimum_size = Vector2(120, 0)
+flat = true
+modulate = Color(1, 1, 1, 0.7)
 text = "Quit"
 
-[node name="ShopPanel" type="PanelContainer" parent="UI"]
-custom_minimum_size = Vector2(200, 60)
+[node name="SettingsPanel" type="PanelContainer" parent="UI"]
 visible = false
+custom_minimum_size = Vector2(160, 0)
 
-[node name="ShopVBox" type="VBoxContainer" parent="UI/ShopPanel"]
-layout_mode = 2
-
-[node name="ShopTitle" type="Label" parent="UI/ShopPanel/ShopVBox"]
-text = "Unlock Shop"
-horizontal_alignment = 1
-
-[node name="ItemList" type="VBoxContainer" parent="UI/ShopPanel/ShopVBox"]

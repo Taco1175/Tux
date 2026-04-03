@@ -42,7 +42,7 @@ var _stairs_triggered: bool = false
 func _ready() -> void:
 	add_to_group("game_scene")
 	_setup_tileset()
-	AudioManager.play_track("dungeon")
+	MusicManager.play_zone("flooded_ruins")  # Default; updated per floor in _generate_floor
 
 	if multiplayer.is_server():
 		_generate_floor()
@@ -137,6 +137,8 @@ func _generate_floor() -> void:
 	_spawn_chests()
 	_spawn_zone_boss()
 	_place_mural_marker()
+	# Switch music to match zone theme
+	MusicManager.play_zone(_zone_theme_to_music(dungeon_data.theme))
 
 
 @rpc("authority", "reliable")
@@ -146,6 +148,7 @@ func _broadcast_floor(floor_number: int, floor_seed: int) -> void:
 	dungeon_data = BSPGenerator.generate(floor_number, floor_seed)
 	_build_tilemap()
 	_create_minimap()
+	MusicManager.play_zone(_zone_theme_to_music(dungeon_data.theme))
 
 
 func _build_tilemap() -> void:
@@ -181,6 +184,15 @@ func _tile_type_to_atlas(tile_type: int, theme: int) -> Vector2i:
 		BSPGenerator.TileType.SECRET_WALL: return Vector2i(0, 0)  # Looks like a wall
 		BSPGenerator.TileType.DOOR:        return Vector2i(1, 0)  # Looks like floor
 	return Vector2i(-1, -1)
+
+
+func _zone_theme_to_music(theme: int) -> String:
+	match theme:
+		BSPGenerator.ZoneTheme.FLOODED_RUINS:  return "flooded_ruins"
+		BSPGenerator.ZoneTheme.CORAL_CRYPTS:   return "coral_crypts"
+		BSPGenerator.ZoneTheme.ABYSSAL_TRENCH: return "abyssal_trench"
+		BSPGenerator.ZoneTheme.GODS_SANCTUM:   return "gods_sanctum"
+	return "flooded_ruins"
 
 
 # -------------------------------------------------------
@@ -467,6 +479,9 @@ func _spawn_zone_boss() -> void:
 	enemy.global_position = Vector2(boss_room.center()) * TILE_SIZE
 	enemies_node.add_child(enemy, true)
 	enemy.died.connect(_on_enemy_died)
+	# Switch to boss music
+	MusicManager.play_zone("boss")
+	MusicManager.set_intensity(0.7)
 
 
 # -------------------------------------------------------

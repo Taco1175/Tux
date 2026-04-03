@@ -324,6 +324,7 @@ func _check_boss_phase() -> void:
 		attack_cooldown_max *= 0.7
 		damage = int(damage * 1.3)
 		move_speed *= 1.2
+		MusicManager.set_intensity(0.85)
 		_broadcast_boss_phase.rpc(2)
 	elif boss_phase == 2 and hp_ratio <= 0.25:
 		boss_phase = 3
@@ -332,6 +333,7 @@ func _check_boss_phase() -> void:
 		damage = int(damage * 1.4)
 		move_speed *= 1.3
 		enrage_speed_mult = 1.5
+		MusicManager.set_intensity(1.0)
 		_broadcast_boss_phase.rpc(3)
 
 
@@ -348,6 +350,7 @@ func _broadcast_boss_phase(phase: int) -> void:
 func _die() -> void:
 	ai_state = AIState.DEAD
 	velocity = Vector2.ZERO
+	MusicManager.add_intensity(0.1 if not is_boss else 0.25)
 	_sync_death.rpc()
 	died.emit(self, global_position)
 	# Delay removal to let death animation play
