@@ -118,6 +118,7 @@ func _ready() -> void:
 
 	# Build sprite frames for all players (local and remote)
 	sprite.sprite_frames = SpriteFramesBuilder.build_frames_for_class(player_class)
+	sprite.scale = SpriteFramesBuilder.get_class_scale(player_class)
 	sprite.play("idle")
 
 	if not is_local_player:
@@ -379,10 +380,21 @@ func _broadcast_attack_directed(dir: Vector2) -> void:
 	if dir.x != 0:
 		sprite.flip_h = dir.x < 0
 	_spawn_slash_effect(dir)
+	sprite.play("attack")
 	sprite.modulate = Color(1.0, 1.0, 0.6)
-	await get_tree().create_timer(0.1).timeout
+	await get_tree().create_timer(0.2).timeout
 	if sprite:
 		sprite.modulate = Color.WHITE
+		if not is_dead:
+			sprite.play("idle")
+
+
+func play_secondary_animation() -> void:
+	if sprite and sprite.sprite_frames and sprite.sprite_frames.has_animation("secondary"):
+		sprite.play("secondary")
+		await get_tree().create_timer(0.3).timeout
+		if sprite and not is_dead:
+			sprite.play("idle")
 
 
 func _apply_on_hit_effects(enemy: CharacterBody2D, dir: Vector2) -> void:

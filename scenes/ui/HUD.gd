@@ -551,6 +551,13 @@ func _setup_pause_buttons() -> void:
 	resume_btn.pressed.connect(_resume)
 	vbox.add_child(resume_btn)
 
+	var controls_btn := Button.new()
+	controls_btn.text = "Controls"
+	controls_btn.add_theme_font_size_override("font_size", 8)
+	controls_btn.custom_minimum_size = Vector2(0, 16)
+	controls_btn.pressed.connect(_show_controls_menu)
+	vbox.add_child(controls_btn)
+
 	var hub_btn := Button.new()
 	hub_btn.text = "Quit to Hub"
 	hub_btn.add_theme_font_size_override("font_size", 8)
@@ -560,3 +567,224 @@ func _setup_pause_buttons() -> void:
 		GameManager.end_run(GameManager.EndingChoice.NONE)
 	)
 	vbox.add_child(hub_btn)
+
+
+# -------------------------------------------------------
+# Controls / Key Rebinding menu
+# -------------------------------------------------------
+const REBINDABLE_ACTIONS := [
+	["move_up",           "Move Up"],
+	["move_down",         "Move Down"],
+	["move_left",         "Move Left"],
+	["move_right",        "Move Right"],
+	["ability_primary",   "Primary Attack"],
+	["ability_secondary", "Secondary Attack"],
+	["interact",          "Interact / Pickup"],
+	["inventory_open",    "Inventory"],
+	["hotbar_1",          "Hotbar 1"],
+	["hotbar_2",          "Hotbar 2"],
+	["hotbar_3",          "Hotbar 3"],
+	["hotbar_4",          "Hotbar 4"],
+]
+
+var _rebind_buttons: Dictionary = {}  # action_name -> Button
+var _waiting_for_input: String = ""   # action currently being rebound
+
+
+func _show_controls_menu() -> void:
+	var vbox := pause_panel.get_node_or_null("VBox")
+	if not vbox:
+		return
+	for child in vbox.get_children():
+		child.queue_free()
+	_rebind_buttons.clear()
+	_waiting_for_input = ""
+
+	var title := Label.new()
+	title.text = "Controls"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 9)
+	vbox.add_child(title)
+
+	var hint := Label.new()
+	hint.text = "Click a key to rebind"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_font_size_override("font_size", 5)
+	hint.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+	vbox.add_child(hint)
+
+	# Scrollable list of bindings
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	vbox.add_child(scroll)
+
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 1)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+
+	for entry in REBINDABLE_ACTIONS:
+		var action_name: String = entry[0]
+		var display_name: String = entry[1]
+
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 4)
+		list.add_child(row)
+
+		var lbl := Label.new()
+		lbl.text = display_name
+		lbl.add_theme_font_size_override("font_size", 5)
+		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lbl.custom_minimum_size = Vector2(70, 0)
+		row.add_child(lbl)
+
+		var btn := Button.new()
+		btn.text = _get_key_name_for_action(action_name)
+		btn.add_theme_font_size_override("font_size", 5)
+		btn.custom_minimum_size = Vector2(60, 12)
+		btn.pressed.connect(_start_rebind.bind(action_name))
+		row.add_child(btn)
+		_rebind_buttons[action_name] = btn
+
+	# Back + Reset row
+	var btn_row := HBoxContainer.new()
+	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	btn_row.add_theme_constant_override("separation", 8)
+	vbox.add_child(btn_row)
+
+	var reset_btn := Button.new()
+	reset_btn.text = "Reset Defaults"
+	reset_btn.add_theme_font_size_override("font_size", 6)
+	reset_btn.custom_minimum_size = Vector2(0, 14)
+	reset_btn.pressed.connect(_reset_default_bindings)
+	btn_row.add_child(reset_btn)
+
+	var back_btn := Button.new()
+	back_btn.text = "Back"
+	back_btn.add_theme_font_size_override("font_size", 6)
+	back_btn.custom_minimum_size = Vector2(0, 14)
+	back_btn.pressed.connect(_setup_pause_buttons)
+	btn_row.add_child(back_btn)
+
+
+func _get_key_name_for_action(action_name: String) -> String:
+	var events := InputMap.action_get_events(action_name)
+	for event in events:
+		if event is InputEventKey:
+			return event.as_text().get_slice(" (", 0)
+		if event is InputEventMouseButton:
+			match event.button_index:
+				MOUSE_BUTTON_LEFT:  return "LMB"
+				MOUSE_BUTTON_RIGHT: return "RMB"
+				MOUSE_BUTTON_MIDDLE: return "MMB"
+				_: return "Mouse %d" % event.button_index
+	return "---"
+
+
+func _start_rebind(action_name: String) -> void:
+	_waiting_for_input = action_name
+	if _rebind_buttons.has(action_name):
+		_rebind_buttons[action_name].text = "..."
+
+
+func _input(event: InputEvent) -> void:
+	if _waiting_for_input == "":
+		return
+	if not (event is InputEventKey or event is InputEventMouseButton):
+		return
+	if event is InputEventKey and not event.pressed:
+		return
+	if event is InputEventMouseButton and not event.pressed:
+		return
+	# Don't allow ESC as a rebind — it's reserved for pause
+	if event is InputEventKey and event.keycode == KEY_ESCAPE:
+		_waiting_for_input = ""
+		_refresh_rebind_buttons()
+		return
+
+	get_viewport().set_input_as_handled()
+
+	var action := _waiting_for_input
+	# Remove existing keyboard/mouse events, keep gamepad events
+	var existing := InputMap.action_get_events(action)
+	for ev in existing:
+		if ev is InputEventKey or ev is InputEventMouseButton:
+			InputMap.action_erase_event(action, ev)
+	InputMap.action_add_event(action, event)
+
+	_waiting_for_input = ""
+	_refresh_rebind_buttons()
+	_save_keybinds()
+
+
+func _refresh_rebind_buttons() -> void:
+	for action_name in _rebind_buttons:
+		_rebind_buttons[action_name].text = _get_key_name_for_action(action_name)
+
+
+func _reset_default_bindings() -> void:
+	InputMap.load_from_project_settings()
+	_refresh_rebind_buttons()
+	_delete_keybinds_file()
+
+
+func _save_keybinds() -> void:
+	var data := {}
+	for entry in REBINDABLE_ACTIONS:
+		var action_name: String = entry[0]
+		var events := InputMap.action_get_events(action_name)
+		var saved_events := []
+		for ev in events:
+			if ev is InputEventKey:
+				saved_events.append({"type": "key", "keycode": ev.keycode, "physical_keycode": ev.physical_keycode})
+			elif ev is InputEventMouseButton:
+				saved_events.append({"type": "mouse", "button_index": ev.button_index})
+			elif ev is InputEventJoypadButton:
+				saved_events.append({"type": "joypad_button", "button_index": ev.button_index})
+			elif ev is InputEventJoypadMotion:
+				saved_events.append({"type": "joypad_axis", "axis": ev.axis, "axis_value": ev.axis_value})
+		data[action_name] = saved_events
+	var file := FileAccess.open("user://keybinds.json", FileAccess.WRITE)
+	if file:
+		file.store_string(JSON.stringify(data, "\t"))
+
+
+func _delete_keybinds_file() -> void:
+	if FileAccess.file_exists("user://keybinds.json"):
+		DirAccess.remove_absolute("user://keybinds.json")
+
+
+static func load_keybinds() -> void:
+	if not FileAccess.file_exists("user://keybinds.json"):
+		return
+	var file := FileAccess.open("user://keybinds.json", FileAccess.READ)
+	if not file:
+		return
+	var json := JSON.new()
+	if json.parse(file.get_as_text()) != OK:
+		return
+	var data: Dictionary = json.data
+	for action_name in data:
+		if not InputMap.has_action(action_name):
+			continue
+		InputMap.action_erase_events(action_name)
+		for ev_data in data[action_name]:
+			var ev: InputEvent = null
+			match ev_data.get("type", ""):
+				"key":
+					ev = InputEventKey.new()
+					ev.keycode = ev_data.get("keycode", 0)
+					ev.physical_keycode = ev_data.get("physical_keycode", 0)
+				"mouse":
+					ev = InputEventMouseButton.new()
+					ev.button_index = ev_data.get("button_index", 1)
+				"joypad_button":
+					ev = InputEventJoypadButton.new()
+					ev.button_index = ev_data.get("button_index", 0)
+				"joypad_axis":
+					ev = InputEventJoypadMotion.new()
+					ev.axis = ev_data.get("axis", 0)
+					ev.axis_value = ev_data.get("axis_value", 0.0)
+			if ev:
+				InputMap.action_add_event(action_name, ev)

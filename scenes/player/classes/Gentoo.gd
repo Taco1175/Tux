@@ -92,6 +92,7 @@ func _use_secondary_ability() -> void:
 		return
 	dash_cooldown = DASH_COOLDOWN_MAX
 	AudioManager.play_sfx("drum_fill")
+	play_secondary_animation()
 	var dir := _get_aim_direction()
 	_execute_dash(dir)
 

@@ -194,15 +194,14 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -80.0
-offset_top = -60.0
-offset_right = 80.0
-offset_bottom = 60.0
+offset_left = -100.0
+offset_top = -120.0
+offset_right = 100.0
+offset_bottom = 120.0
 visible = false
 
 [node name="VBox" type="VBoxContainer" parent="HUDLayer/HUD/Center/PausePanel"]
 layout_mode = 2
-alignment = 1
 
 [node name="InventoryUI" type="Control" parent="HUDLayer/HUD"]
 layout_mode = 1

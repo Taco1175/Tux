@@ -91,6 +91,7 @@ func _use_secondary_ability() -> void:
 		return
 	bass_drop_cooldown = BASS_DROP_COOLDOWN_MAX
 	AudioManager.play_sfx("bass_drop")
+	play_secondary_animation()
 	current_mana -= BASS_DROP_MANA_COST
 	mana_changed.emit(current_mana, max_mana)
 

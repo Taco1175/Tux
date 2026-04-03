@@ -33,6 +33,10 @@ signal run_ended(ending: EndingChoice)
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	# Load saved key bindings at startup
+	var HUD := load("res://scenes/ui/HUD.gd")
+	if HUD:
+		HUD.load_keybinds()
 
 
 func change_state(new_state: State) -> void:

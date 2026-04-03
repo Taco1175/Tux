@@ -187,28 +187,31 @@ def _make_class_sprites(accent_positions_idle, accent_positions_walk=None):
     return idle, walk1, walk2, attack, death
 
 
-def make_penguin_sheet(idle, walk1, walk2, attack, death, accent_colour, filename):
-    """Create a 64x64 sheet: idle/walk/attack/death (4 rows x 4 frames x 16px)"""
+def make_penguin_sheet(idle, walk1, walk2, attack, death, secondary, accent_colour, filename):
+    """Create a 64x80 sheet: idle/walk/attack/death/secondary (5 rows x 4 frames x 16px)"""
     palette = {
         "B": BK, "W": WH, "O": OR, "E": BK, "A": accent_colour,
-        "G": GY, ".": T,
+        "G": GY, "R": RD, "P": PU, "Y": YL, "L": LB, ".": T,
     }
     frames = [
-        idle,  idle,  idle,  idle,    # idle (row 0): 2 used
-        walk1, walk2, walk1, walk2,   # walk (row 1): 4 frames waddle
-        attack, idle, attack, idle,   # attack (row 2): 2 used
-        death, death, death, death,   # death (row 3): 2 used
+        idle,  idle,  idle,  idle,         # idle (row 0): 2 used
+        walk1, walk2, walk1, walk2,        # walk (row 1): 4 frames waddle
+        attack, idle, attack, idle,        # attack (row 2): 2 used
+        death, death, death, death,        # death (row 3): 2 used
+        secondary, idle, secondary, idle,  # secondary (row 4): 2 used
     ]
-    pixels = [T] * (64 * 64)
+    sheet_w = 64
+    sheet_h = 80
+    pixels = [T] * (sheet_w * sheet_h)
     for fi, frame_grid in enumerate(frames):
         row = fi // 4
         col = fi % 4
         frame_px = px(frame_grid, palette)
         for fy in range(16):
             for fx in range(16):
-                dest = (row * 16 + fy) * 64 + (col * 16 + fx)
+                dest = (row * 16 + fy) * sheet_w + (col * 16 + fx)
                 pixels[dest] = frame_px[fy * 16 + fx]
-    write_png(filename, 64, 64, pixels)
+    write_png(filename, sheet_w, sheet_h, pixels)
 
 
 # ---- Emperor: gold crown on head ------------------------------------------
@@ -231,8 +234,28 @@ def make_emperor():
     emperor_atk[1] = "...ABBBBA......."
     emperor_atk[2] = "...BAAABB......."
 
+    # Secondary: Power Chord — arms wide, sonic rings emanate outward
+    emperor_sec = [
+        "................",
+        "...ABBBBA.......",
+        "...BAAABB.......",
+        "..BBEWWEBB......",
+        "..BWWOOWWB......",
+        "AABWWWWWWBAA....",
+        "ABBWWWWWWBBAA...",
+        ".BWWWWWWWWB.AA..",
+        ".BWWWWWWWWB..A..",
+        ".BBBBBBBBBB.....",
+        "..BBBBBBBB......",
+        "....BB..BB......",
+        "...OOO.OOO......",
+        "................",
+        "................",
+        "................",
+    ]
+
     make_penguin_sheet(emperor_idle, emperor_w1, emperor_w2, emperor_atk, death,
-                       GD, "assets/sprites/players/emperor_sheet.png")
+                       emperor_sec, GD, "assets/sprites/players/emperor_sheet.png")
 
 
 # ---- Gentoo: orange stripe across eyes (like real gentoo markings) ---------
@@ -251,8 +274,28 @@ def make_gentoo():
     gentoo_atk = [row for row in atk]
     gentoo_atk[3] = "..BAEWWEBA......";
 
+    # Secondary: Paradiddle Dash — leaning forward, blur streaks behind
+    gentoo_sec = [
+        "................",
+        "......BBBB......",
+        ".....BBAABB.....",
+        "....BAEWWEBA....",
+        "....BWWOOWWB....",
+        "....BWWWWWWB....",
+        "...BBWWWWWWBB...",
+        "..AABWWWWWWBA...",
+        "..A.BWWWWWWB.A..",
+        "..A.BBBBBBBB.A..",
+        ".A...BBBBBB...A.",
+        "......BB..BB....",
+        ".....OOO.OOO....",
+        "................",
+        "................",
+        "................",
+    ]
+
     make_penguin_sheet(gentoo_idle, gentoo_w1, gentoo_w2, gentoo_atk, death,
-                       OR, "assets/sprites/players/gentoo_sheet.png")
+                       gentoo_sec, OR, "assets/sprites/players/gentoo_sheet.png")
 
 
 # ---- Little Blue: light blue body tint (smallest penguin) ------------------
@@ -276,8 +319,28 @@ def make_little_blue():
     lb_atk[6] = ".ABWWWWWWABBBBB."
     lb_atk[9] = ".AAAAAAAABA....."
 
+    # Secondary: Power Ballad — arms up, green healing notes radiate
+    lb_sec = [
+        "..L...L...L.....",
+        "...LBBBB.L......",
+        "...BBAABB.......",
+        "..BBEWWEBB......",
+        "..BWWOOWWB......",
+        "..BWWWWWWB......",
+        ".ABWWWWWWBA.....",
+        "AABWWWWWWBAA....",
+        "A.BWWWWWWB.A....",
+        ".AAAAAAAABA.....",
+        "..AABBBBAA......",
+        "....BB..BB......",
+        "...OOO.OOO......",
+        "................",
+        "................",
+        "................",
+    ]
+
     make_penguin_sheet(lb_idle, lb_w1, lb_w2, lb_atk, death,
-                       LB, "assets/sprites/players/little_blue_sheet.png")
+                       lb_sec, LB, "assets/sprites/players/little_blue_sheet.png")
 
 
 # ---- Macaroni: yellow crest feathers on top --------------------------------
@@ -304,8 +367,28 @@ def make_macaroni():
     mac_atk[1] = "...ABBBB........"
     mac_atk[2] = "...BAAABB......."
 
+    # Secondary: Bass Drop — crouching, sound waves radiating down
+    mac_sec = [
+        "...A.A.A........",  # 0
+        "...ABBBB........",  # 1
+        "...BAAABB.......",  # 2
+        "..BBEWWEBB......",  # 3
+        "..BWWOOWWB......",  # 4
+        "..BWWWWWWB......",  # 5
+        ".BBWWWWWWBB.....",  # 6
+        ".BWWWWWWWWB.....",  # 7
+        ".BWWWWWWWWB.....",  # 8
+        ".BBBBBBBBBB.....",  # 9
+        "PPBBBBBBBBPP....",  # 10
+        "P..BB..BB..P....",  # 11
+        "P.OOO.OOO..P....",  # 12
+        ".P.........P....",  # 13
+        "..PPPPPPPP......",  # 14
+        "................",  # 15
+    ]
+
     make_penguin_sheet(mac_idle, mac_w1, mac_w2, mac_atk, death,
-                       YL, "assets/sprites/players/macaroni_sheet.png")
+                       mac_sec, YL, "assets/sprites/players/macaroni_sheet.png")
 
 # ---------------------------------------------------------------------------
 # Enemy sprites (16×16 single frames → simple 32×16 sprite sheet: idle + walk)

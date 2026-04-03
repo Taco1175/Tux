@@ -58,6 +58,7 @@ func _use_secondary_ability() -> void:
 		return
 	power_chord_cooldown = POWER_CHORD_COOLDOWN_MAX
 	AudioManager.play_sfx("power_chord")
+	play_secondary_animation()
 	var aim_dir := _get_aim_direction()
 	if multiplayer.is_server():
 		_request_power_chord(global_position, aim_dir)
@@ -90,13 +91,14 @@ func _execute_power_chord(_origin: Vector2, _direction: Vector2) -> void:
 
 
 # Passive: Stage Presence — chance to shrug off damage
-func take_damage(amount: int) -> void:
+func take_damage(amount: int, attacker: Node2D = null) -> void:
 	if randf() < block_chance:
 		sprite.modulate = Color(1.0, 0.6, 0.2)
 		await get_tree().create_timer(0.2).timeout
-		sprite.modulate = Color.WHITE
+		if sprite:
+			sprite.modulate = Color.WHITE
 		return
-	super.take_damage(amount)
+	super.take_damage(amount, attacker)
 
 
 func get_loot_class_bias() -> int:

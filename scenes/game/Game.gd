@@ -507,8 +507,8 @@ func spawn_fireball(origin: Vector2, target_pos: Vector2,
 func _spawn_item_drop(pos: Vector2, item_data: Dictionary) -> void:
 	var item_node := ItemScene.instantiate()
 	item_node.global_position = pos
-	item_node.setup(item_data)
 	items_node.add_child(item_node, true)
+	item_node.setup(item_data)
 
 
 func _get_nearest_player_gold_find(pos: Vector2) -> float:

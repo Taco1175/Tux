@@ -66,6 +66,7 @@ func _use_secondary_ability() -> void:
 		return
 	ballad_cooldown = BALLAD_COOLDOWN_MAX
 	AudioManager.play_sfx("power_ballad")
+	play_secondary_animation()
 	if multiplayer.is_server():
 		_request_power_ballad(global_position)
 	else:
@@ -97,6 +98,7 @@ func _trigger_death_metal() -> void:
 	has_snapped = true
 	snap_timer = SNAP_DURATION
 	AudioManager.play_sfx("death_metal")
+	play_secondary_animation()
 	sprite.modulate = Color(0.7, 0.0, 0.0)
 	# Temporary stat override — pure aggression
 	crit_chance = 0.40

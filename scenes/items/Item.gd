@@ -4,6 +4,10 @@ extends Area2D
 
 var item_data: Dictionary = {}
 
+# Item icon atlas: 4 icons × 16px in assets/sprites/items/item_icons.png
+# Col 0 = weapon, 1 = armor, 2 = potion, 3 = throwable
+const ICON_SHEET := "res://assets/sprites/items/item_icons.png"
+
 @onready var sprite: Sprite2D  = $Sprite2D
 @onready var label: Label      = $Label
 @onready var glow: PointLight2D = $Glow
@@ -21,24 +25,31 @@ func setup(data: Dictionary) -> void:
 	if label:
 		label.text = data.get("display_name", "?")
 		label.add_theme_color_override("font_color", color)
+		label.add_theme_font_size_override("font_size", 6)
 
-	# Tint the sprite by rarity color (placeholder until real sprites exist)
+	# Create a visible colored box sprite — guaranteed to render
 	if sprite:
-		if not sprite.texture:
-			var tex := PlaceholderTexture2D.new()
-			tex.size = Vector2(8, 8)
-			sprite.texture = tex
-		sprite.modulate = color
+		var img := Image.create(10, 10, false, Image.FORMAT_RGBA8)
+		# Draw a filled box with a 1px darker border
+		var border := color.darkened(0.4)
+		for y in 10:
+			for x in 10:
+				if x == 0 or x == 9 or y == 0 or y == 9:
+					img.set_pixel(x, y, border)
+				else:
+					img.set_pixel(x, y, color)
+		sprite.texture = ImageTexture.create_from_image(img)
 
 	# Glow intensity scales with rarity
 	if glow:
 		if not glow.texture:
-			glow.texture = GradientTexture2D.new()
-			(glow.texture as GradientTexture2D).fill = GradientTexture2D.FILL_RADIAL
+			var grad_tex := GradientTexture2D.new()
+			grad_tex.fill = GradientTexture2D.FILL_RADIAL
 			var gradient := Gradient.new()
 			gradient.set_color(0, Color.WHITE)
 			gradient.set_color(1, Color(1, 1, 1, 0))
-			(glow.texture as GradientTexture2D).gradient = gradient
+			grad_tex.gradient = gradient
+			glow.texture = grad_tex
 		glow.color = color
 		glow.energy = 0.3 + rarity * 0.15
 		glow.visible = rarity >= ItemDatabase.Rarity.RARE
